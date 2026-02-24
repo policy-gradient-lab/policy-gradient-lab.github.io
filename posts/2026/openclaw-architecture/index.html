@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-02-22">
+
+<title>From OS for Humans to an OS-Like Runtime for Agents: The OpenClaw Architecture – Policy Gradient Lab</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-1e029e5fd7d87a21eb2f54efb0a74956.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">From OS for Humans to an OS-Like Runtime for Agents: The OpenClaw Architecture</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">February 22, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#von-neumann-metaphor" id="toc-von-neumann-metaphor"><span class="header-section-number">2</span> Von Neumann Metaphor</a></li>
+  <li><a href="#agentic-loop" id="toc-agentic-loop"><span class="header-section-number">3</span> Agentic Loop</a></li>
+  <li><a href="#memory-and-state" id="toc-memory-and-state"><span class="header-section-number">4</span> Memory and State</a></li>
+  <li><a href="#conclusion" id="toc-conclusion"><span class="header-section-number">5</span> Conclusion</a></li>
+  </ul>
+</nav>
+<section id="introduction" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">1</span> Introduction</h2>
+<p><a href="https://github.com/openclaw/openclaw">OpenClaw</a> isn’t an operating system in the kernel sense; it’s an always-on agent runtime built around a Gateway control plane—functionally an “Agent OS layer” on top of your real OS. Instead of optimizing for chat UX first, it shifts the center of gravity to a persistent runtime: a WebSocket control plane that routes inputs from multiple terminals into tool-capable execution with state, skills, and boundaries.</p>
+<ul>
+<li><p>When agents run long, chat-first systems struggle with tool races, partial output interleaving, and non-auditable state.</p></li>
+<li><p>When agents connect from multiple surfaces, “one chat = one brain” becomes a routing and authorization problem.</p></li>
+<li><p>When agents gain capabilities, prompt scripts become the new monolith.</p></li>
+</ul>
+<p>OpenClaw treats these as runtime problems, not prompting problems. This design demotes chat to just another terminal. CLI, web UI, macOS apps, and mobile/headless nodes can all serve as entry points into the same running system.&nbsp; Capability expansion is handled through skills: OpenClaw snapshots eligible skills when a session starts for performance, but can also <strong>refresh skills mid-session</strong> when the skills watcher is enabled (picked up on the next agent turn).&nbsp;</p>
+<p>Compared with typical dialogue-driven workflows (AutoGPT/LangChain-style), the key difference is that OpenClaw looks like an operational runtime: it standardizes connectivity, session execution lanes, and tool dispatch behind a single control plane, rather than treating the chat loop as the system’s core abstraction.</p>
+</section>
+<section id="von-neumann-metaphor" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="von-neumann-metaphor"><span class="header-section-number">2</span> Von Neumann Metaphor</h2>
+<p>This is an architectural metaphor: OpenClaw doesn’t implement a kernel, but it <em>does</em> implement OS-like runtime responsibilities—control, I/O multiplexing, state continuity, and execution governance—at the agent layer.</p>
+<ul>
+<li><p><strong>The Control Unit → The Gateway (Control Plane):</strong> OpenClaw’s Gateway acts as both the system controller and the data bus. It unifies access across different terminals and background nodes, manages session routing, uses role/scope as connection context for routing/authorization, and dispatches user “intents” to the appropriate executable capabilities.</p></li>
+<li><p><strong>The ALU → The LLM (Reasoning &amp; Planning Unit):</strong> In this paradigm, the LLM plays the role of a general-purpose processor: not crunching numbers, but performing inference-driven planning and tool selection.</p></li>
+<li><p><strong>Memory → State &amp; Memory Hierarchy:</strong> The agent’s memory architecture is highly stratified. The LLM’s context window acts as short-term cache (L1), the session state acts as active RAM (L2), while long-term task statuses, skill snapshots, and persistent execution logs form the system’s hard drive.</p></li>
+<li><p><strong>The I/O Subsystem → Terminals &amp; Channels:</strong> Interfaces like the CLI, Web dashboard, macOS app, Slack, or WhatsApp are simply different hardware peripherals. They are no longer isolated product UIs; they are multiplexed input/output devices feeding into the exact same computational entity.</p></li>
+<li><p><strong>Instructions &amp; Programs → Skills:</strong> Skills function as installable, composable instruction set extensions. By encapsulating tool interfaces, usage constraints, and behavioral patterns into modular units loaded at runtime, the agent’s capabilities can scale without relying on massive, hardcoded prompt scripts.</p></li>
+<li><p><strong>Peripherals &amp; Execution Units → Tools &amp; Nodes:</strong> The local file system, headless browser automation, shell environments, and third-party APIs make up the agent’s external physical world. OpenClaw’s breakthrough isn’t simply that it interacts with these tools, but that it brings their execution under strict, unified runtime governance—managing connections, routing, security boundaries, and auditing.</p></li>
+</ul>
+</section>
+<section id="agentic-loop" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="agentic-loop"><span class="header-section-number">3</span> Agentic Loop</h2>
+<p>OpenClaw defines the agentic loop as a full execution lifecycle and explicitly notes that runs are serialized per session key (a session lane) to avoid tool/session races and keep history consistent.&nbsp; In practice, that means the runtime treats “a turn” as an execution unit with scheduling, streaming, and accounting concerns—exactly the kind of machinery you need when an agent can call tools, run for multiple steps, and still remain operable and debuggable.</p>
+<section id="perception" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="perception"><span class="header-section-number">3.1</span> Perception</h3>
+<p>When a new message arrives, OpenClaw doesn’t immediately “ask the LLM.” The code first decides <em>how</em> that message should enter the system — for example, whether it should be routed into an already-running session (steering an ongoing run) or start a new turn. That means the message is treated like a control signal in a running system, not merely text to append to a prompt.</p>
+</section>
+<section id="reasoning" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="reasoning"><span class="header-section-number">3.2</span> Reasoning</h3>
+<p>Once the system commits to running a turn, it goes through a dedicated execution path that’s designed to be resilient. Instead of assuming every run will be “clean,” the runtime includes recovery behavior for known failure modes (e.g., transcript/compaction issues). In other words, the code treats a turn as something that must be correct and restartable, not just “one more completion call.”</p>
+</section>
+<section id="action" class="level3" data-number="3.3">
+<h3 data-number="3.3" class="anchored" data-anchor-id="action"><span class="header-section-number">3.3</span> Action</h3>
+<p>OpenClaw treats tool execution as a first-class part of the loop: tool starts/updates/results are surfaced as structured events, and the runtime explicitly manages output boundaries (so you don’t end up with half an assistant message interleaved with tool output). This is the kind of detail you only build if you’re thinking in terms of an agent runtime with real actions and streaming, not a chat demo that happens to call tools.</p>
+</section>
+<section id="feedback" class="level3" data-number="3.4">
+<h3 data-number="3.4" class="anchored" data-anchor-id="feedback"><span class="header-section-number">3.4</span> Feedback</h3>
+<p>Finally, OpenClaw serializes execution at the session level and tracks usage/metrics as part of the run, which is what you’d expect from a system you can operate in production (where concurrency and accounting matter). This matches the docs’ claim that runs are serialized per session and implemented as a lifecycle pipeline, but the key point is: the repo actually contains the scheduling and accounting machinery to make that true.</p>
+<p>OpenClaw’s main difference isn’t that it has tools — it’s that it treats the agent loop as a managed, observable, restartable runtime:</p>
+<ul>
+<li><p>input can steer an ongoing run (not always spawn a new chat completion),</p></li>
+<li><p>turns have operational guardrails,</p></li>
+<li><p>tool execution is streamed and ordered as events,</p></li>
+<li><p>and session execution is serialized and accounted for like a service.</p></li>
+</ul>
+</section>
+</section>
+<section id="memory-and-state" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="memory-and-state"><span class="header-section-number">4</span> Memory and State</h2>
+<p>When building agentic systems, the industry instinct is to reach for a vector database early. OpenClaw takes a more systems-first approach: memory is local-first and file-backed, designed to be human-auditable and privacy-scoped, while retrieval (including vector search) is treated as an acceleration layer on top of canonical files.&nbsp;</p>
+<p>A key design choice is separation: OpenClaw distinguishes between always-on “identity/operating state” (bootstrap files injected into runs) and episodic memory stored as workspace notes that can be searched and pulled in when needed. This structure helps teams reason about what is consistently present in the model context versus what is selectively recalled.&nbsp;</p>
+<section id="markdown-on-disk-is-the-source-of-truth" class="level3" data-number="4.1">
+<h3 data-number="4.1" class="anchored" data-anchor-id="markdown-on-disk-is-the-source-of-truth"><span class="header-section-number">4.1</span> Markdown-on-Disk is the Source of Truth</h3>
+<p>OpenClaw memory is plain Markdown in the agent workspace, and the docs state that the <strong>files are the source of truth</strong>—the model only “remembers” what gets written to disk.&nbsp;</p>
+<p>Operationally, OpenClaw also recommends treating the workspace as private memory and putting it in a private git repo so it’s backed up and recoverable—making memory changes naturally diffable and reviewable.&nbsp;</p>
+</section>
+<section id="separating-identity-from-episodic-memory" class="level3" data-number="4.2">
+<h3 data-number="4.2" class="anchored" data-anchor-id="separating-identity-from-episodic-memory"><span class="header-section-number">4.2</span> Separating Identity from Episodic Memory</h3>
+<p>OpenClaw’s workspace layout separates “identity and operating rules” from “notes and recall”:</p>
+<ul>
+<li><p><strong>The Constitution</strong> (SOUL.md, AGENTS.md, USER.md, etc.)<strong>:</strong> These are workspace bootstrap files that OpenClaw injects (trimmed) into the system prompt for agent runs, providing consistent identity/profile context.&nbsp;</p></li>
+<li><p><strong>The Episodic Layer</strong> (MEMORY.md, memory/YYYY-MM-DD.md)<strong>:</strong> The memory docs define two memory layers: a daily log (memory/YYYY-MM-DD.md) and an optional curated long-term file (MEMORY.md) for durable facts and preferences.&nbsp;</p></li>
+</ul>
+<p><strong>Rule of thumb:</strong> use SOUL.md (and other bootstrap files) for principles and boundaries that should be consistently present; use MEMORY.md / daily logs for durable facts and running context that the system can recall via memory tools.&nbsp;</p>
+</section>
+<section id="privacy-boundaries-as-a-first-class-rule" class="level3" data-number="4.3">
+<h3 data-number="4.3" class="anchored" data-anchor-id="privacy-boundaries-as-a-first-class-rule"><span class="header-section-number">4.3</span> Privacy Boundaries as a First-Class Rule</h3>
+<p>OpenClaw explicitly scopes MEMORY.md to load only in the main, private session and <em>not</em> in group contexts, which reduces accidental leakage of private long-term context into shared channels by default.&nbsp;</p>
+</section>
+<section id="vector-search-is-a-derived-capability" class="level3" data-number="4.4">
+<h3 data-number="4.4" class="anchored" data-anchor-id="vector-search-is-a-derived-capability"><span class="header-section-number">4.4</span> Vector Search is a Derived Capability</h3>
+<p>OpenClaw can build a vector index over MEMORY.md and memory/*.md so semantic queries work even when wording differs. The docs are explicit that the canonical memory remains Markdown, while memory search is provided by a plugin and uses SQLite internally (optionally accelerated by sqlite-vec when available).&nbsp;</p>
+<p>In other words, <strong>storage and retrieval are intentionally decoupled</strong>: the index is derived from the files rather than replacing them as the “truth.”&nbsp;</p>
+</section>
+<section id="pluggable-retrieval-backends" class="level3" data-number="4.5">
+<h3 data-number="4.5" class="anchored" data-anchor-id="pluggable-retrieval-backends"><span class="header-section-number">4.5</span> Pluggable Retrieval Backends</h3>
+<p>Because Markdown stays canonical, OpenClaw can swap retrieval engines without changing the underlying memory format. The docs describe an experimental QMD backend as a local-first sidecar that combines BM25 + vectors + reranking, with OpenClaw shelling out to QMD for retrieval.&nbsp;</p>
+<p>OpenClaw’s memory design makes agent state inspectable and operable: critical identity/boundary context lives in explicit workspace files that can be versioned, while large-scale recall is handled through a derived search layer rather than a black-box database. That combination is well-suited for teams that care about auditability and predictable behavior in production.</p>
+</section>
+</section>
+<section id="conclusion" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">5</span> Conclusion</h2>
+<p>The shift from a conversational wrapper to an OS-like runtime isn’t just an engineering preference—it’s what makes agentic systems operable. By centralizing connectivity through the Gateway, enforcing execution guardrails in the agentic loop, and anchoring state in an auditable, local-first memory structure, OpenClaw directly targets the friction points that show up in production: tool races, interleaved outputs, multi-surface routing complexity, and opaque state.</p>
+<p>More importantly, this runtime discipline opens a path to better alignment and post-training for agents. Because OpenClaw serializes each turn into structured, observable events, it naturally produces high-fidelity trajectory data: model reasoning, tool invocation, tool results, and environment feedback—cleanly separated and replayable. That’s exactly the kind of scaffolding you want when applying preference learning or reinforcement learning techniques (e.g., DPO/PPO-style approaches) to end-to-end agent workflows, not just single-shot generations.</p>
+<p>Frameworks will always be great for prototyping an agent’s logic. But operating agents safely at scale requires a runtime with governance, observability, and auditable state. OpenClaw isn’t just redefining how we talk to LLMs—it’s defining the operational baseline for <strong>next-generation autonomy</strong>.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

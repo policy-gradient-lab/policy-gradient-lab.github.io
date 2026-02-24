@@ -1,0 +1,108 @@
+/* --- Table of Contents Overrides --- */
+
+/* 1. Match font size with body content */
+#toc-title {
+  font-size: 1rem !important;
+  font-weight: 600;
+  margin-top: 0;
+}
+
+/* 2. Remove default bullet points */
+#TOC ul {
+  list-style-type: none !important;
+  padding-left: 0 !important; 
+}
+
+/* Maintain hierarchy indentation for nested items */
+#TOC ul ul {
+  padding-left: 1.5rem !important; 
+}
+
+/* 3. Style the foldable summary element */
+#TOC summary {
+  cursor: pointer;
+  outline: none;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+/* Subtle hover feedback for the interactive element */
+#TOC summary:hover {
+  opacity: 0.7;
+}
+
+/* 1. Frosted Glass Navbar */
+.navbar {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+/* 2. Soft Typography & Spacing */
+body {
+  letter-spacing: -0.01em;
+  color: #1d1d1f; /* Apple's specific off-black */
+  background-color: #ffffff;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1d1d1f;
+}
+
+/* 3. Rounded Cards for Code Blocks & Images */
+.quarto-figure, div.sourceCode {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+}
+
+/* 4. Minimalist Buttons & Links */
+a {
+  color: #0071e3; /* Apple Blue */
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.7;
+}
+
+/* 5. Refined Footer */
+.nav-footer {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+  border-top: 1px solid #f5f5f7;
+  color: #86868b; /* Subtle gray for secondary info */
+  font-size: 0.9rem;
+}
+
+/* --- Listing Cards --- */
+
+/* Target each post container in the default listing */
+.quarto-listing-default .quarto-post {
+  border-bottom: none !important; /* Removes the horizontal ruler */
+  background-color: #ffffff; 
+  border-radius: 16px; /* Apple-style continuous curve radius */
+  padding: 1.5rem;
+  margin-bottom: 1.5rem; /* Creates clean spacing between posts */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); /* Subtle depth */
+  border: 1px solid rgba(0, 0, 0, 0.04); /* Crisp edge definition */
+  transition: all 0.2s ease-in-out; /* Smooth animation setup */
+}
+
+/* Interactive hover state to make the cards feel responsive */
+.quarto-listing-default .quarto-post:hover {
+  transform: scale(1.01); /* Slight enlargement on hover */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06); /* Increased shadow depth */
+}
+
+/* Ensure the title inside the card has the correct spacing */
+.quarto-listing-default .quarto-post .listing-title {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
