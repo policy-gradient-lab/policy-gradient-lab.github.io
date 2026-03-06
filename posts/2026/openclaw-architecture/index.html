@@ -165,8 +165,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#introduction" id="toc-introduction"><span class="header-section-number">1</span> Introduction</a></li>
   <li><a href="#a-von-neumann-metaphor-for-agent-systems" id="toc-a-von-neumann-metaphor-for-agent-systems"><span class="header-section-number">2</span> A von Neumann Metaphor for Agent Systems</a></li>
-  <li><a href="#the-agentic-loop-as-a-managed-execution-lifecycle" id="toc-the-agentic-loop-as-a-managed-execution-lifecycle"><span class="header-section-number">3</span> The Agentic Loop as a Managed Execution Lifecycle</a></li>
-  <li><a href="#memory-and-state-local-first-file-backed-auditable" id="toc-memory-and-state-local-first-file-backed-auditable"><span class="header-section-number">4</span> Memory and State: Local-First, File-Backed, Auditable</a></li>
+  <li><a href="#the-agentic-loop-as-a-managed-execution-lifecycle" id="toc-the-agentic-loop-as-a-managed-execution-lifecycle"><span class="header-section-number">3</span> The Agentic Loop as a Managed Execution Lifecycle</a>
+  <ul>
+  <li><a href="#perception" id="toc-perception"><span class="header-section-number">3.1</span> Perception</a></li>
+  <li><a href="#reasoning" id="toc-reasoning"><span class="header-section-number">3.2</span> Reasoning</a></li>
+  <li><a href="#action" id="toc-action"><span class="header-section-number">3.3</span> Action</a></li>
+  <li><a href="#feedback" id="toc-feedback"><span class="header-section-number">3.4</span> Feedback</a></li>
+  </ul></li>
+  <li><a href="#memory-and-state-local-first-file-backed-auditable" id="toc-memory-and-state-local-first-file-backed-auditable"><span class="header-section-number">4</span> Memory and State: Local-First, File-Backed, Auditable</a>
+  <ul>
+  <li><a href="#markdown-on-disk-as-the-source-of-truth" id="toc-markdown-on-disk-as-the-source-of-truth"><span class="header-section-number">4.1</span> Markdown-on-Disk as the Source of Truth</a></li>
+  <li><a href="#separating-identity-from-episodic-memory" id="toc-separating-identity-from-episodic-memory"><span class="header-section-number">4.2</span> Separating Identity from Episodic Memory</a></li>
+  <li><a href="#privacy-boundaries-as-a-first-class-rule" id="toc-privacy-boundaries-as-a-first-class-rule"><span class="header-section-number">4.3</span> Privacy Boundaries as a First-Class Rule</a></li>
+  <li><a href="#vector-search-is-a-derived-capability" id="toc-vector-search-is-a-derived-capability"><span class="header-section-number">4.4</span> Vector Search is a Derived Capability</a></li>
+  <li><a href="#pluggable-retrieval-backends" id="toc-pluggable-retrieval-backends"><span class="header-section-number">4.5</span> Pluggable Retrieval Backends</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion"><span class="header-section-number">5</span> Conclusion</a></li>
   </ul>
 </nav>
 <section id="introduction" class="level2" data-number="1">
@@ -295,13 +309,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 data-number="4.5" class="anchored" data-anchor-id="pluggable-retrieval-backends"><span class="header-section-number">4.5</span> Pluggable Retrieval Backends</h3>
 <p>Because the files remain canonical, OpenClaw can vary the retrieval backend without changing the memory format. That keeps storage and retrieval decoupled and makes the system more operable for teams that care about inspectability over black-box persistence.</p>
 <p>This memory design is one of OpenClaw’s clearest systems choices. Critical identity and behavioral context live in explicit workspace files; episodic and durable recall live in Markdown memory layers; and semantic retrieval is an optional acceleration layer rather than the core substrate.</p>
-<p>That tradeoff is significant. It favors inspectability and operational trust over the illusion of “magical memory,” which is often harder to debug, harder to govern, and harder to recover when things go wrong. ## Conclusion</p>
+<p>That tradeoff is significant. It favors inspectability and operational trust over the illusion of “magical memory,” which is often harder to debug, harder to govern, and harder to recover when things go wrong.</p>
+</section>
+</section>
+<section id="conclusion" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">5</span> Conclusion</h2>
 <p>The shift from a conversational wrapper to a runtime-centric design is not merely aesthetic. OpenClaw centralizes connectivity through the Gateway, serializes agent execution by session lane, exposes queue modes that can steer or defer input, and anchors longer-lived memory in auditable workspace files. Together, those choices target the operational friction that appears once agents become persistent, tool-using, and multi-surface.</p>
 <p>Just as importantly, this runtime discipline creates cleaner operational traces. Because OpenClaw separates lifecycle events, assistant output, tool events, queueing behavior, session state, and usage telemetry, it appears well suited to collecting structured agent trajectories. That does not mean the project officially positions itself as an RLHF or post-training framework; rather, it suggests that OpenClaw provides a promising substrate for future preference-learning or reinforcement-learning-style work on end-to-end agent behavior.</p>
 <p>Frameworks remain excellent for prototyping agent logic. But operating agents across real tools, real sessions, and real interfaces requires governance, observability, and state you can actually inspect. OpenClaw’s significance is that it pushes those concerns into the runtime itself and treats them as first-class system design problems.</p>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
