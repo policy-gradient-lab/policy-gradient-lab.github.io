@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-03-06">
+
+<title>PPO Series 2: Trust Region Policy Optimization – Policy Gradient Lab</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-93c8e7af82e4d696d10af310f1e9abe1.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">PPO Series 2: Trust Region Policy Optimization</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 6, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#trust-region-optimization" id="toc-trust-region-optimization"><span class="header-section-number">1</span> Trust Region Optimization</a></li>
+  <li><a href="#trust-region-policy-optimization-trpo" id="toc-trust-region-policy-optimization-trpo"><span class="header-section-number">2</span> Trust Region Policy Optimization (TRPO)</a>
+  <ul>
+  <li><a href="#the-surrogate-objective" id="toc-the-surrogate-objective"><span class="header-section-number">2.1</span> The Surrogate Objective</a></li>
+  <li><a href="#the-kl-divergence-constraint" id="toc-the-kl-divergence-constraint"><span class="header-section-number">2.2</span> The KL Divergence Constraint</a></li>
+  <li><a href="#local-approximation-using-taylor-expansion" id="toc-local-approximation-using-taylor-expansion"><span class="header-section-number">2.3</span> Local Approximation using Taylor Expansion</a></li>
+  <li><a href="#bypassing-the-matrix-inversion-with-conjugate-gradient" id="toc-bypassing-the-matrix-inversion-with-conjugate-gradient"><span class="header-section-number">2.4</span> Bypassing the Matrix Inversion with Conjugate Gradient</a></li>
+  <li><a href="#the-backtracking-algorithm" id="toc-the-backtracking-algorithm"><span class="header-section-number">2.5</span> The Backtracking Algorithm</a></li>
+  <li><a href="#bridging-the-gap-with-the-surrogate-objective" id="toc-bridging-the-gap-with-the-surrogate-objective"><span class="header-section-number">2.6</span> Bridging the Gap with the Surrogate Objective</a></li>
+  <li><a href="#why-trpo-uses-the-fisher-information-matrix" id="toc-why-trpo-uses-the-fisher-information-matrix"><span class="header-section-number">2.7</span> Why TRPO Uses the Fisher Information Matrix</a></li>
+  <li><a href="#the-monotonic-improvement-guarantee" id="toc-the-monotonic-improvement-guarantee"><span class="header-section-number">2.8</span> The Monotonic Improvement Guarantee</a></li>
+  </ul></li>
+  <li><a href="#from-natural-policy-gradient-to-trust-region-policy-optimization" id="toc-from-natural-policy-gradient-to-trust-region-policy-optimization"><span class="header-section-number">3</span> From Natural Policy Gradient to Trust Region Policy Optimization</a>
+  <ul>
+  <li><a href="#where-npg-falls-short-the-step-size-problem" id="toc-where-npg-falls-short-the-step-size-problem"><span class="header-section-number">3.1</span> Where NPG Falls Short: The Step Size Problem</a></li>
+  <li><a href="#how-trpo-extends-npg-the-trust-region" id="toc-how-trpo-extends-npg-the-trust-region"><span class="header-section-number">3.2</span> How TRPO Extends NPG: The Trust Region</a></li>
+  <li><a href="#the-line-search-guarantee" id="toc-the-line-search-guarantee"><span class="header-section-number">3.3</span> The Line Search Guarantee</a></li>
+  </ul></li>
+  <li><a href="#sec-taylor" id="toc-sec-taylor"><span class="header-section-number">4</span> Second-Order Taylor Expansion of the KL Divergence</a></li>
+  <li><a href="#sec-hf" id="toc-sec-hf"><span class="header-section-number">5</span> Why <span class="math inline">H = F</span></a></li>
+  </ul>
+</nav>
+<p>Trust Region Policy Optimization (TRPO) <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman et al. 2017</a>)</span> is a policy-based reinforcement learning method that shares the same fundamental objective function as standard policy gradient algorithms: maximizing the expected value <span class="math inline">J(\theta) = \mathbb{E}_S[V_\pi(S)]</span>.</p>
+<p>As shown by the Policy Gradient Theorem (see my previous post <a href="../../../posts/2026/ppo-series-1-policy-gradient-theorem/">PPO Series 1: The Policy Gradient Theorem</a>), this objective can be optimized by estimating the gradient of <span class="math inline">J(\theta)</span> with respect to the policy parameters. Importantly, TRPO does not change this objective; instead, it modifies how the policy update is performed by constraining how far the new policy can move from the old one. While standard policy gradient algorithms rely on stochastic gradient ascent to improve the policy, TRPO utilizes a trust-region algorithm. This approach ensures more stable and reliable updates by constraining how much the policy can change in a single step, helping to prevent the performance collapses often seen with traditional gradient methods.</p>
+<section id="trust-region-optimization" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="trust-region-optimization"><span class="header-section-number">1</span> Trust Region Optimization</h2>
+<p>At its core, Trust Region optimization is a strategy for safely navigating complex, non-linear objective functions <span class="math inline">f(x)</span> by relying on bounded local approximations. Instead of picking a direction and then guessing a step size like standard line search methods, trust region methods first define a safe maximum step distance, and then find the optimal update within that strict boundary.</p>
+<p>The algorithm proceeds in three main phases:</p>
+<ol type="1">
+<li><p>The Local Approximation</p>
+<p>At the current parameter state <span class="math inline">x_k</span>, we construct a simplified local model of the landscape, typically a second-order Taylor expansion denoted as <span class="math inline">m_k(p)</span>, where <span class="math inline">p</span> is the proposed step vector. We mathematically “trust” this approximation is accurate only within a specific radius, <span class="math inline">\Delta_k</span>.</p></li>
+<li><p>The Constrained Subproblem</p>
+<p>We find the optimal step <span class="math inline">p</span> by minimizing the local model subject to the trust-region boundary constraint:</p>
+<p>Minimize: <span class="math inline">m_k(p)</span></p>
+<p>Subject to: <span class="math inline">\|p\| \le \Delta_k</span></p></li>
+<li><p>The Dynamic Evaluation</p>
+<p>Before officially updating the parameters, we measure how well our local model predicted the actual landscape. We calculate the agreement ratio <span class="math inline">\rho_k</span>, which compares the actual reduction in the true objective function to the predicted reduction from our simplified model:</p>
+<p><span class="math display">\rho_k = \frac{f(x_k) - f(x_k + p_k)}{m_k(0) - m_k(p_k)}</span></p></li>
+</ol>
+<p>Based on <span class="math inline">\rho_k</span>, the algorithm dynamically adjusts. If <span class="math inline">\rho_k</span> is close to 1, the model is highly accurate; the step is accepted, and the trust region <span class="math inline">\Delta_k</span> is expanded for faster optimization. If <span class="math inline">\rho_k</span> is negative, the model was wrong and the step actually made things worse; the step is rejected, the trust region is shrunk, and the algorithm tries again within a tighter, safer boundary. This feedback loop guarantees stable, monotonic improvement even in highly unpredictable loss landscapes.</p>
+</section>
+<section id="trust-region-policy-optimization-trpo" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="trust-region-policy-optimization-trpo"><span class="header-section-number">2</span> Trust Region Policy Optimization (TRPO)</h2>
+<section id="the-surrogate-objective" class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="the-surrogate-objective"><span class="header-section-number">2.1</span> The Surrogate Objective</h3>
+<p>Policy Gradient Theorem proves that the gradient of the state distribution does not affect the policy gradient at the current parameters <span class="math inline">\theta</span>, it saves us from modeling the environment’s transition dynamics. This shortcut only holds true for the exact gradient at the current <span class="math inline">\theta</span>. This is exactly why TRPO cannot just use <span class="math inline">J(\theta)</span> and must rely on the surrogate objective <span class="math inline">L(\theta)</span>.</p>
+<p>Instead of directly maximizing the expected return <span class="math inline">J(\theta)</span>, TRPO optimizes a surrogate objective function. Let <span class="math inline">\theta_{old}</span> be the parameters of the current policy and <span class="math inline">\theta</span> be the parameters of the proposed new policy. TRPO seeks to maximize the following expected advantage:</p>
+<p><span class="math display">L(\theta) = \mathbb{E}_{s, a \sim \pi_{\theta_{old}}} \left[ \frac{\pi_{\theta}(a|s)}{\pi_{\theta_{old}}(a|s)} A_{\theta_{old}}(s, a) \right]</span></p>
+<p>In this equation, <span class="math inline">A_{\theta_{old}}(s, a)</span> is the advantage function, which measures how much better a specific action is compared to the average baseline action in a given state. The ratio <span class="math inline">\frac{\pi_{\theta}(a|s)}{\pi_{\theta_{old}}(a|s)}</span> tracks how the probability of taking that action changes under the new policy.</p>
+<p>It was proved that the true objective <span class="math inline">J(\theta)</span> is mathematically guaranteed to improve as long as <span class="math inline">L(\theta)</span> improves and the Kullback-Leibler divergence between the old and new policies is strictly penalized <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman et al. 2017</a>)</span> . By enforcing a hard constraint on this KL divergence, TRPO traps the optimization step inside a safe, narrow boundary where <span class="math inline">L(\theta)</span> remains a valid and reliable proxy for <span class="math inline">J(\theta)</span>.</p>
+</section>
+<section id="the-kl-divergence-constraint" class="level3" data-number="2.2">
+<h3 data-number="2.2" class="anchored" data-anchor-id="the-kl-divergence-constraint"><span class="header-section-number">2.2</span> The KL Divergence Constraint</h3>
+<p>To prevent the catastrophic updates mentioned earlier, TRPO restricts the change in the policy using Kullback-Leibler (KL) divergence, a mathematical statistic that measures how one probability distribution differs from a second, reference probability distribution.</p>
+<p>Rather than just adding a penalty to the objective function, TRPO enforces a hard constraint on the average KL divergence over the state space. The formal constrained optimization problem is written as:</p>
+<p>Maximize:</p>
+<p><span id="eq-trpo-problem"><span class="math display">L(\theta) \tag{1}</span></span></p>
+<p>Subject to:</p>
+<p><span class="math display">\mathbb{E}_{s \sim \rho_{\theta_{old}}} \left[ D_{KL}(\pi_{\theta_{old}}(\cdot|s) \parallel \pi_{\theta}(\cdot|s)) \right] \le \delta</span></p>
+<p>The parameter <span class="math inline">\delta</span> is a predefined, small scalar value that defines the maximum allowed KL divergence. This creates the “trust region” around the current policy. By enforcing this boundary, the algorithm mathematically guarantees that the new policy <span class="math inline">\pi_{\theta}</span> will not diverge significantly from <span class="math inline">\pi_{\theta_{old}}</span> for any given state. Because the policy is only allowed to change within this safe, trusted region, TRPO maintains stable and theoretically guaranteed monotonic improvement during the learning process.</p>
+</section>
+<section id="local-approximation-using-taylor-expansion" class="level3" data-number="2.3">
+<h3 data-number="2.3" class="anchored" data-anchor-id="local-approximation-using-taylor-expansion"><span class="header-section-number">2.3</span> Local Approximation using Taylor Expansion</h3>
+<p>Let the change in policy parameters be <span class="math inline">\Delta \theta = \theta - \theta_{old}</span>.</p>
+<p>First, we approximate the objective function <span class="math inline">L(\theta)</span> using a first-order Taylor expansion around <span class="math inline">\theta_{old}</span>:</p>
+<p><span class="math display">L(\theta) \approx L(\theta_{old}) + g^T \Delta \theta</span></p>
+<p>Here, <span class="math inline">g</span> is the policy gradient evaluated at <span class="math inline">\theta_{old}</span>:</p>
+<p><span class="math display">g = \nabla_{\theta} L(\theta)|_{\theta=\theta_{old}}</span></p>
+<p>Second, we approximate the KL divergence constraint using a second-order Taylor expansion. The zeroth and first-order terms of the KL divergence between identical distributions are zero, leaving only the second-order term. The detailed proof is provided in <a href="#sec-taylor" class="quarto-xref">Section&nbsp;4</a>.</p>
+<p><span class="math display">\bar{D}_{KL}(\theta_{old}, \theta) \approx \frac{1}{2} \Delta \theta^T H \Delta \theta</span></p>
+<p>Here, <span class="math inline">H</span> is the Hessian matrix of the KL divergence. In the context of probability distributions, this Hessian is equivalent to the Fisher Information Matrix (FIM), as shown in <a href="#sec-hf" class="quarto-xref">Section&nbsp;5</a>.</p>
+<p><span class="math inline">\bar{D}_{KL}(\theta_{old}, \theta)</span> is a shorthand convention used heavily in the actual TRPO paper to make the equations readable. The bar on top denotes a mean or expectation. It specifically represents the average KL divergence over all the states actually sampled in the rollout buffer. Mathematically, it is defined as: <span class="math display">\bar{D}_{KL}(\theta_{old}, \theta) = \mathbb{E}_{s \sim \rho_{\theta_{old}}} \left[ D_{KL}(\pi_{\theta_{old}}(\cdot|s) \parallel \pi_\theta(\cdot|s)) \right]</span> <span class="math inline">D_{KL}(\pi_{\theta_{old}}(\cdot|s) \parallel \pi_\theta(\cdot|s))</span> is the exact, formal application of that concept to our policy networks. It represents the KL divergence between the old policy and the new policy at one single, specific state <span class="math inline">s</span>.</p>
+<p>By substituting these approximations back into the original TRPO formulation <a href="#eq-trpo-problem" class="quarto-xref">Equation&nbsp;1</a>, the problem simplifies into a quadratic program:</p>
+<p>Maximize:</p>
+<p><span class="math display">g^T \Delta \theta</span></p>
+<p>Subject to:</p>
+<p><span class="math display">\frac{1}{2} \Delta \theta^T H \Delta \theta \le \delta</span></p>
+<p>To find the optimal step direction and size, we construct the Lagrangian for this constrained problem:</p>
+<p><span class="math display">\mathcal{L}(\Delta \theta, \lambda) = g^T \Delta \theta - \lambda \left( \frac{1}{2} \Delta \theta^T H \Delta \theta - \delta \right)</span></p>
+<p>We find the maximum by taking the derivative with respect to <span class="math inline">\Delta \theta</span> and setting it to zero:</p>
+<p><span class="math display">\nabla_{\Delta \theta} \mathcal{L} = g - \lambda H \Delta \theta = 0</span></p>
+<p><span class="math display">\Delta \theta = \frac{1}{\lambda} H^{-1} g</span></p>
+<p>This gives us the optimal update direction. Let the search direction be <span class="math inline">x = H^{-1} g</span>. To find the scalar <span class="math inline">\lambda</span>, we plug <span class="math inline">\Delta \theta</span> back into the constraint boundary equation:</p>
+<p><span class="math display">\frac{1}{2} \left( \frac{1}{\lambda} x \right)^T H \left( \frac{1}{\lambda} x \right) = \delta</span></p>
+<p><span class="math display">\frac{1}{2 \lambda^2} x^T H x = \delta</span></p>
+<p><span class="math display">\lambda = \sqrt{\frac{x^T H x}{2\delta}}</span></p>
+<p>Finally, substituting <span class="math inline">\lambda</span> back into the equation for <span class="math inline">\Delta \theta</span> gives the exact parameter update:</p>
+<p><span class="math display">\Delta \theta = \sqrt{\frac{2\delta}{x^T H x}} x</span></p>
+</section>
+<section id="bypassing-the-matrix-inversion-with-conjugate-gradient" class="level3" data-number="2.4">
+<h3 data-number="2.4" class="anchored" data-anchor-id="bypassing-the-matrix-inversion-with-conjugate-gradient"><span class="header-section-number">2.4</span> Bypassing the Matrix Inversion with Conjugate Gradient</h3>
+<p>The equation above requires computing <span class="math inline">x = H^{-1} g</span>, which is equivalent to solving the linear system <span class="math inline">Hx = g</span>.</p>
+<p>For modern deep learning architectures, the Fisher Information Matrix <span class="math inline">H</span> is an <span class="math inline">N \times N</span> matrix where <span class="math inline">N</span> is the number of network parameters. Explicitly computing, storing, and inverting this matrix is computationally intractable.</p>
+<p>This is where the conjugate gradient (CG) method comes in. CG is an iterative algorithm for solving systems of linear equations like <span class="math inline">Hx = g</span> without ever needing to explicitly construct the matrix <span class="math inline">H</span>. The algorithm only requires the ability to compute matrix-vector products, specifically <span class="math inline">Hv</span> for an arbitrary vector <span class="math inline">v</span>.</p>
+<p>This operation is called a Hessian-vector product (HVP). Using automatic differentiation frameworks, the HVP can be computed efficiently with two backward passes, requiring only slightly more computation than standard backpropagation:</p>
+<p><span class="math display">Hv = \nabla_{\theta} \left( \left( \nabla_{\theta} \bar{D}_{KL}(\theta_{old}, \theta) \right)^T v \right)</span></p>
+<p>By using the conjugate gradient method to estimate the search direction <span class="math inline">x</span>, and then scaling it by the constraint scalar, TRPO achieves stable policy updates without the massive computational overhead of matrix inversion.</p>
+</section>
+<section id="the-backtracking-algorithm" class="level3" data-number="2.5">
+<h3 data-number="2.5" class="anchored" data-anchor-id="the-backtracking-algorithm"><span class="header-section-number">2.5</span> The Backtracking Algorithm</h3>
+<p>The reason TRPO needs a backtracking line search is that the math we just worked through relies heavily on local approximations. We used a first-order Taylor expansion for the objective function and a second-order approximation for the KL divergence.</p>
+<p>To bridge the gap between the quadratic approximation and the true non-linear reality of the neural network, TRPO uses the backtracking line search. It evaluates the exact functions to guarantee the step is strictly beneficial.</p>
+<p>Here is the step-by-step mechanics of the search:</p>
+<ol type="1">
+<li><p>Calculate the maximal proposed parameter update using the direction and scalar we derived earlier:</p>
+<p><span class="math display">\Delta \theta = \sqrt{\frac{2\delta}{x^T H x}} x</span></p></li>
+<li><p>Define a decay coefficient <span class="math inline">\alpha \in (0, 1)</span>, often set to 0.5, and initialize a decay index <span class="math inline">j = 0</span>.</p></li>
+<li><p>Propose a new set of policy parameters by taking a exponentially decaying fraction of the maximal step:</p>
+<p><span class="math display">\theta_{new} = \theta_{old} + \alpha^j \Delta \theta</span></p></li>
+<li><p>Evaluate this proposed <span class="math inline">\theta_{new}</span> against two strict acceptance criteria using the true, unapproximated functions:</p>
+<p>Objective improvement: <span class="math inline">L(\theta_{new}) &gt; L(\theta_{old})</span></p>
+<p>KL constraint boundary: <span class="math inline">D_{KL}(\pi_{\theta_{old}} \parallel \pi_{\theta_{new}}) \le \delta</span></p></li>
+<li><p>If both conditions are satisfied, the search successfully terminates, and <span class="math inline">\theta_{new}</span> is accepted as the new policy.</p></li>
+<li><p>If either condition fails, it means the local approximation was too aggressive and overshot the safe region. The algorithm increments <span class="math inline">j</span> by 1 (which shrinks the step size by another factor of <span class="math inline">\alpha</span>) and repeats the evaluation.</p></li>
+</ol>
+</section>
+<section id="bridging-the-gap-with-the-surrogate-objective" class="level3" data-number="2.6">
+<h3 data-number="2.6" class="anchored" data-anchor-id="bridging-the-gap-with-the-surrogate-objective"><span class="header-section-number">2.6</span> Bridging the Gap with the Surrogate Objective</h3>
+<p>To understand why we can optimize a surrogate objective <span class="math inline">L(\theta)</span> instead of the true expected return <span class="math inline">J(\theta)</span>, we need to look at their first derivatives. The foundational trick of TRPO is proving that at the exact point of the current policy parameters <span class="math inline">\theta_{old}</span>, the gradient of the surrogate perfectly matches the gradient of the true objective.</p>
+<p>Let’s define our terms formally:</p>
+<ul>
+<li><p><span class="math inline">\pi_\theta(a|s)</span>: The policy parameterized by <span class="math inline">\theta</span>.</p></li>
+<li><p><span class="math inline">\theta_{old}</span>: The current parameters of our policy before the update.</p></li>
+<li><p><span class="math inline">\rho_{\theta_{old}}(s)</span>: The state visitation distribution under the old policy.</p></li>
+<li><p><span class="math inline">A_{\theta_{old}}(s, a)</span>: The advantage function evaluated under the old policy.</p></li>
+</ul>
+<p>First, we recall the standard Policy Gradient Theorem for our true objective <span class="math inline">J(\theta)</span>. Evaluated at the current parameters <span class="math inline">\theta_{old}</span>, it is written as:</p>
+<p><span class="math display">\nabla_\theta J(\theta)|_{\theta = \theta_{old}} = \mathbb{E}_{s \sim \rho_{\theta_{old}}, a \sim \pi_{\theta_{old}}} \left[ \nabla_\theta \log \pi_\theta(a|s)|_{\theta = \theta_{old}} A_{\theta_{old}}(s, a) \right]</span></p>
+<p>Next, we define our surrogate objective <span class="math inline">L(\theta)</span>. This function uses importance sampling to evaluate a proposed new policy using the trajectories collected by the old policy:</p>
+<p><span class="math display">L(\theta) = \mathbb{E}_{s \sim \rho_{\theta_{old}}, a \sim \pi_{\theta_{old}}} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_{old}}(a|s)} A_{\theta_{old}}(s, a) \right]</span></p>
+<p>Notice the fraction in the <span class="math inline">L(\theta)</span> equation: <span class="math inline">\frac{\pi_{\theta}(a|s)}{\pi_{\theta_{old}}(a|s)}</span>. This is an importance sampling ratio. Because we do not know the state distribution for the proposed new policy <span class="math inline">\pi_\theta</span>, TRPO evaluates the objective using the trajectories and state distribution already collected by the old policy <span class="math inline">\pi_{\theta_{old}}</span>. The importance sampling ratio corrects for the fact that we are evaluating a new policy using data generated by an old one. It asks: if the new policy makes a good action more likely, how much should we increase the objective?</p>
+<p>To find the gradient of this surrogate objective <span class="math inline">L(\theta)</span>, we take the derivative with respect to <span class="math inline">\theta</span>. Because the expectation is taken over states and actions sampled from the old policy, the distribution over which we are taking the expectation is independent of the active variable <span class="math inline">\theta</span>. This allows us to pass the gradient operator directly inside the expectation:</p>
+<p><span class="math display">\nabla_\theta L(\theta) = \mathbb{E}_{s \sim \rho_{\theta_{old}}, a \sim \pi_{\theta_{old}}} \left[ \frac{\nabla_\theta \pi_\theta(a|s)}{\pi_{\theta_{old}}(a|s)} A_{\theta_{old}}(s, a) \right]</span></p>
+<p>Now, we evaluate this gradient at the exact point of our current parameters, setting <span class="math inline">\theta = \theta_{old}</span>:</p>
+<p><span class="math display">\nabla_\theta L(\theta)|_{\theta = \theta_{old}} = \mathbb{E}_{s \sim \rho_{\theta_{old}}, a \sim \pi_{\theta_{old}}} \left[ \frac{\nabla_\theta \pi_\theta(a|s)|_{\theta = \theta_{old}}}{\pi_{\theta_{old}}(a|s)} A_{\theta_{old}}(s, a) \right]</span></p>
+<p>At this stage, we apply the standard log-derivative trick, which states that <span class="math inline">\nabla_x \log f(x) = \frac{\nabla_x f(x)}{f(x)}</span>. If we apply this identity to our policy at the point <span class="math inline">\theta_{old}</span>, we get:</p>
+<p><span class="math display">\frac{\nabla_\theta \pi_\theta(a|s)|_{\theta = \theta_{old}}}{\pi_{\theta_{old}}(a|s)} = \nabla_\theta \log \pi_\theta(a|s)|_{\theta = \theta_{old}}</span></p>
+<p>Substituting this identity back into our expectation yields our final result:</p>
+<p><span class="math display">\nabla_\theta L(\theta)|_{\theta = \theta_{old}} = \mathbb{E}_{s \sim \rho_{\theta_{old}}, a \sim \pi_{\theta_{old}}} \left[ \nabla_\theta \log \pi_\theta(a|s)|_{\theta = \theta_{old}} A_{\theta_{old}}(s, a) \right]</span></p>
+<p>This final equation is identical to the right-hand side of the Policy Gradient Theorem. Therefore, we have proven:</p>
+<p><span class="math display">\nabla_\theta L(\theta)|_{\theta = \theta_{old}} = \nabla_\theta J(\theta)|_{\theta = \theta_{old}}</span></p>
+<p>Because their first derivatives match, taking a small step to maximize the easy-to-calculate surrogate <span class="math inline">L(\theta)</span> guarantees we are moving in the exact same direction as if we were maximizing the impossible-to-calculate true objective <span class="math inline">J(\theta)</span>. However, because this equality only holds strictly at <span class="math inline">\theta = \theta_{old}</span>, we must introduce the trust region constraint to ensure we do not step too far away from this point of equivalence.</p>
+</section>
+<section id="why-trpo-uses-the-fisher-information-matrix" class="level3" data-number="2.7">
+<h3 data-number="2.7" class="anchored" data-anchor-id="why-trpo-uses-the-fisher-information-matrix"><span class="header-section-number">2.7</span> Why TRPO Uses the Fisher Information Matrix</h3>
+<p>When we use standard gradient descent to update a neural network, we are taking a step in Euclidean space. We change the parameters <span class="math inline">\theta</span> by some small Euclidean distance <span class="math inline">\Delta \theta</span>.</p>
+<p>However, a neural network policy <span class="math inline">\pi_\theta(a|s)</span> outputs a probability distribution. The relationship between the parameters and the output distribution is highly non-linear. In some regions of the parameter space, a massive change in <span class="math inline">\theta</span> might barely affect the output probabilities. In other regions, a microscopic change in <span class="math inline">\theta</span> might drastically shift the probabilities, completely changing the agent’s behavior and destroying the policy.</p>
+<p>If we define our trust region simply by limiting the Euclidean distance <span class="math inline">\Delta \theta^T \Delta \theta &lt; \epsilon</span>, we are ignoring the actual effect on the policy. Standard gradient descent does not understand the underlying geometry of the probability distributions it is creating.</p>
+<p>The Fisher Information Matrix solves this problem by acting as a metric tensor for probability distributions. It defines the local geometry of the probability space, often referred to as a Riemannian manifold.</p>
+<p>Instead of measuring the Euclidean distance between parameter vectors, we want to measure the statistical distance between the resulting probability distributions. The Kullback-Leibler (KL) divergence does exactly this.</p>
+<p>If we look at the second-order Taylor expansion of the KL divergence between a policy and a slightly updated policy, a beautiful mathematical property emerges. The Hessian matrix (the matrix of second derivatives) of the KL divergence evaluated at the current parameters is exactly equal to the Fisher Information Matrix, which we will denote as <span class="math inline">F</span>:</p>
+<p><span class="math display">D_{KL}(\pi_{\theta} \parallel \pi_{\theta + \Delta \theta}) \approx \frac{1}{2} \Delta \theta^T F \Delta \theta</span></p>
+<p>The FIM translates a change in parameters (<span class="math inline">\Delta \theta</span>) into the resulting change in the probability distribution. By incorporating the FIM, TRPO transforms the standard gradient into the natural gradient. This ensures the algorithm takes steps of a consistent size in the actual behavior space, moving safely regardless of how the neural network parameters are parameterized.</p>
+<p>TRPO explicitly substitutes the FIM into its optimization constraint to enforce the trust region. Recall the quadratic program TRPO attempts to solve. It maximizes the surrogate advantage <span class="math inline">g^T \Delta \theta</span> subject to the KL divergence constraint. Using the relationship established above, TRPO mathematically frames the constraint using the FIM:</p>
+<p><span class="math display">\frac{1}{2} \Delta \theta^T F \Delta \theta \le \delta</span></p>
+<p>As derived earlier using Lagrange multipliers, the optimal step direction <span class="math inline">x</span> for this constrained problem requires inverting this matrix:</p>
+<p><span class="math display">x = F^{-1} g</span></p>
+<p>This vector <span class="math inline">x</span> is the natural gradient direction. It points toward the steepest improvement in the objective function while accounting for the curvature of the probability space defined by <span class="math inline">F</span>.</p>
+<p>Because the FIM is an <span class="math inline">N \times N</span> matrix where <span class="math inline">N</span> is the number of network parameters, explicitly constructing and inverting <span class="math inline">F</span> is impossible for deep neural networks. TRPO uses the conjugate gradient method to approximate the solution to <span class="math inline">Fx = g</span>. In this process, TRPO never builds the full FIM. Instead, it computes Fisher-vector products (<span class="math inline">Fv</span>) for arbitrary vectors <span class="math inline">v</span>.</p>
+<p>Mathematically, the FIM is also defined as the expected outer product of the score function (the gradient of the log-probability):</p>
+<p><span class="math display">F = \mathbb{E}_{s,a} \left[ \nabla_\theta \log \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s)^T \right]</span></p>
+<p>By leveraging automatic differentiation packages, TRPO can compute the product of this massive matrix and a vector <span class="math inline">v</span> efficiently using a sequence of vector-Jacobian products, providing the precise directional curvature needed for the natural gradient step without the impossible memory requirements.</p>
+</section>
+<section id="the-monotonic-improvement-guarantee" class="level3" data-number="2.8">
+<h3 data-number="2.8" class="anchored" data-anchor-id="the-monotonic-improvement-guarantee"><span class="header-section-number">2.8</span> The Monotonic Improvement Guarantee</h3>
+<p>We established that maximizing the surrogate objective <span class="math inline">L(\theta)</span> is equivalent to maximizing the true objective <span class="math inline">J(\theta)</span> exactly at the current parameters <span class="math inline">\theta_{old}</span>. However, as the new policy <span class="math inline">\pi_\theta</span> diverges from <span class="math inline">\pi_{\theta_{old}}</span>, this approximation breaks down. If we take too large a step, an increase in <span class="math inline">L(\theta)</span> might actually result in a catastrophic decrease in the true expected return.</p>
+<p>To prevent this, Schulman et al.&nbsp;derived a theoretical lower bound that strictly bounds the difference between the true objective and the surrogate objective. They proved that the true expected return is mathematically guaranteed to be greater than or equal to the surrogate objective minus a penalty based on how much the policy distribution changes.</p>
+<p>The theoretical lower bound is defined as:</p>
+<p><span class="math display">J(\theta) \ge L(\theta) - C \max_s D_{KL}(\pi_{\theta_{old}}(\cdot|s) \parallel \pi_\theta(\cdot|s))</span></p>
+<p>Let’s break down the components of this inequality:</p>
+<ul>
+<li><p><span class="math inline">J(\theta)</span>: The true expected return of the proposed new policy.</p></li>
+<li><p><span class="math inline">L(\theta)</span>: The surrogate objective evaluated using the old policy’s state distribution, <span class="math inline">\rho_{\theta_{old}}(s)</span>.</p></li>
+<li><p><span class="math inline">\max_s D_{KL}(\pi_{\theta_{old}}(\cdot|s) \parallel \pi_\theta(\cdot|s))</span>: The maximum Kullback-Leibler divergence between the old and new policy across all possible states <span class="math inline">s</span>.</p></li>
+<li><p><span class="math inline">C</span>: A theoretical penalty coefficient defined as <span class="math inline">C = \frac{4\epsilon \gamma}{(1-\gamma)^2}</span>, where <span class="math inline">\epsilon</span> is the maximum absolute advantage and <span class="math inline">\gamma</span> is the discount factor.</p></li>
+</ul>
+<p>This equation is the mathematical bedrock of Trust Region Policy Optimization. It provides an absolute safety net. If we can find a new policy <span class="math inline">\theta</span> that maximizes the right-hand side of this inequality, we are mathematically guaranteed that the true objective <span class="math inline">J(\theta)</span> on the left-hand side will improve by at least that same amount.</p>
+<p>By forcing the optimization process to consider the KL divergence penalty, the algorithm is mathematically prevented from taking a step that destroys the policy. It guarantees monotonic improvement.</p>
+</section>
+</section>
+<section id="from-natural-policy-gradient-to-trust-region-policy-optimization" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="from-natural-policy-gradient-to-trust-region-policy-optimization"><span class="header-section-number">3</span> From Natural Policy Gradient to Trust Region Policy Optimization</h2>
+<p>Trust Region Policy Optimization (TRPO) is fundamentally an extension and practical stabilization of the Natural Policy Gradient (NPG) algorithm <span class="citation" data-cites="kakadeNaturalPolicyGradient2001a">(<a href="#ref-kakadeNaturalPolicyGradient2001a" role="doc-biblioref">Kakade 2001</a>)</span>. While they share the exact same underlying philosophy regarding the geometry of probability space, TRPO solves a critical flaw in how NPG applies its updates.</p>
+<p>Both NPG and TRPO recognize that standard gradient descent is flawed for updating policies. Taking a step of a fixed Euclidean distance in parameter space can lead to wildly unpredictable changes in the actual probability distribution of the policy.</p>
+<p>To fix this, both algorithms calculate the exact same update direction. They multiply the standard policy gradient <span class="math inline">g</span> by the inverse of the Fisher Information Matrix <span class="math inline">F</span>:</p>
+<p><span class="math display">x = F^{-1} g</span></p>
+<p>This vector <span class="math inline">x</span> is the natural gradient. It points in the direction of steepest objective improvement while accounting for the curvature of the probability manifold.</p>
+<section id="where-npg-falls-short-the-step-size-problem" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="where-npg-falls-short-the-step-size-problem"><span class="header-section-number">3.1</span> Where NPG Falls Short: The Step Size Problem</h3>
+<p>The original Natural Policy Gradient algorithm uses this natural gradient direction but relies on a standard, fixed learning rate (or step size) <span class="math inline">\alpha</span>:</p>
+<p><span class="math display">\theta_{new} = \theta_{old} + \alpha F^{-1} g</span></p>
+<p>This is where NPG runs into practical problems. Because the curvature of the probability space changes dynamically as the neural network learns, a fixed learning rate is incredibly unstable. In some states, a specific <span class="math inline">\alpha</span> might result in a tiny, inefficient step. In other states, that exact same <span class="math inline">\alpha</span> might result in a massive jump that completely destroys the policy’s behavior. NPG provides no mathematical guarantees against taking a destructive step.</p>
+</section>
+<section id="how-trpo-extends-npg-the-trust-region" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="how-trpo-extends-npg-the-trust-region"><span class="header-section-number">3.2</span> How TRPO Extends NPG: The Trust Region</h3>
+<p>TRPO can be viewed as NPG augmented with a mathematically rigorous step-size calculation. It takes the natural gradient direction from NPG but completely replaces the fixed learning rate with a dynamic scalar derived from a hard Kullback-Leibler (KL) divergence constraint.</p>
+<p>Instead of guessing a safe learning rate <span class="math inline">\alpha</span>, TRPO asks the user to define <span class="math inline">\delta</span>, the maximum allowed change in the probability distribution. By enforcing the constraint <span class="math inline">D_{KL} \le \delta</span>, TRPO analytically calculates the exact maximum step size that can be taken in the natural gradient direction without violating the trust region:</p>
+<p><span class="math display">\Delta \theta = \sqrt{\frac{2\delta}{x^T F x}} x</span></p>
+</section>
+<section id="the-line-search-guarantee" class="level3" data-number="3.3">
+<h3 data-number="3.3" class="anchored" data-anchor-id="the-line-search-guarantee"><span class="header-section-number">3.3</span> The Line Search Guarantee</h3>
+<p>Furthermore, because both the natural gradient and the analytical step size rely on local Taylor approximations, TRPO adds a backtracking line search, which NPG lacks. The line search evaluates the true, unapproximated non-linear objective function and the exact KL divergence to ensure the proposed natural gradient step is strictly beneficial.</p>
+<p>In summary, NPG defines the mathematically optimal direction to update a probability distribution, while TRPO provides the mechanical constraints and safety checks required to stably walk in that direction when using deep neural networks.</p>
+</section>
+</section>
+<section id="sec-taylor" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="sec-taylor"><span class="header-section-number">4</span> Second-Order Taylor Expansion of the KL Divergence</h2>
+<p>To derive this approximation, we need to perform a Taylor expansion of the Kullback-Leibler (KL) divergence function around the current policy parameters <span class="math inline">\theta_{old}</span>.</p>
+<p>For clarity in the derivation, let <span class="math inline">p_\theta(x)</span> represent our parameterized probability distribution, which corresponds to the policy <span class="math inline">\pi_\theta(a|s)</span> in reinforcement learning.</p>
+<p>The KL divergence between the old distribution and the new distribution is defined as:</p>
+<p><span class="math display">D_{KL}(p_{\theta_{old}} \parallel p_\theta) = \sum_x p_{\theta_{old}}(x) \log \frac{p_{\theta_{old}}(x)}{p_\theta(x)}</span></p>
+<p>Let <span class="math inline">f(\theta) = D_{KL}(p_{\theta_{old}} \parallel p_\theta)</span>. We want to approximate <span class="math inline">f(\theta)</span> at a point <span class="math inline">\theta = \theta_{old} + \Delta\theta</span>.</p>
+<p>The general formula for a second-order multivariate Taylor expansion of <span class="math inline">f(\theta)</span> around <span class="math inline">\theta_{old}</span> is:</p>
+<p><span class="math display">f(\theta) \approx f(\theta_{old}) + \nabla_\theta f(\theta)|_{\theta=\theta_{old}}^T \Delta\theta + \frac{1}{2} \Delta\theta^T \nabla^2_\theta f(\theta)|_{\theta=\theta_{old}} \Delta\theta</span></p>
+<p>We will evaluate each of these three terms individually.</p>
+<p>The zeroth-order term is simply the function evaluated at <span class="math inline">\theta_{old}</span>:</p>
+<p><span class="math display">f(\theta_{old}) = D_{KL}(p_{\theta_{old}} \parallel p_{\theta_{old}})</span></p>
+<p>By definition, the KL divergence between two identical distributions is exactly zero. Mathematically:</p>
+<p><span class="math display">D_{KL}(p_{\theta_{old}} \parallel p_{\theta_{old}}) = \sum_x p_{\theta_{old}}(x) \log \frac{p_{\theta_{old}}(x)}{p_{\theta_{old}}(x)} = \sum_x p_{\theta_{old}}(x) \log(1) = 0</span></p>
+<p>Next, we calculate the gradient of the KL divergence with respect to the new parameters <span class="math inline">\theta</span>:</p>
+<p><span class="math display">\nabla_\theta f(\theta) = \nabla_\theta \left( \sum_x p_{\theta_{old}}(x) \left( \log p_{\theta_{old}}(x) - \log p_\theta(x) \right) \right)</span></p>
+<p>Because <span class="math inline">p_{\theta_{old}}(x)</span> is a constant with respect to <span class="math inline">\theta</span>, its derivative is zero. We can move the gradient operator inside the summation:</p>
+<p><span class="math display">\nabla_\theta f(\theta) = - \sum_x p_{\theta_{old}}(x) \nabla_\theta \log p_\theta(x)</span></p>
+<p>Here, we apply the log-derivative trick, which states that <span class="math inline">\nabla_\theta \log p_\theta(x) = \frac{\nabla_\theta p_\theta(x)}{p_\theta(x)}</span>:</p>
+<p><span class="math display">\nabla_\theta f(\theta) = - \sum_x p_{\theta_{old}}(x) \frac{\nabla_\theta p_\theta(x)}{p_\theta(x)}</span></p>
+<p>Now, we must evaluate this gradient at the point <span class="math inline">\theta = \theta_{old}</span> to find the first-order coefficient for our Taylor expansion:</p>
+<p><span class="math display">\nabla_\theta f(\theta)|_{\theta=\theta_{old}} = - \sum_x p_{\theta_{old}}(x) \frac{\nabla_\theta p_\theta(x)|_{\theta=\theta_{old}}}{p_{\theta_{old}}(x)}</span></p>
+<p>The <span class="math inline">p_{\theta_{old}}(x)</span> terms in the numerator and denominator cancel out:</p>
+<p><span class="math display">\nabla_\theta f(\theta)|_{\theta=\theta_{old}} = - \sum_x \nabla_\theta p_\theta(x)|_{\theta=\theta_{old}}</span></p>
+<p>Because the derivative of a sum is the sum of the derivatives, we can pull the gradient operator outside the summation:</p>
+<p><span class="math display">\nabla_\theta f(\theta)|_{\theta=\theta_{old}} = - \nabla_\theta \left( \sum_x p_\theta(x) \right)|_{\theta=\theta_{old}}</span></p>
+<p>A fundamental property of any valid probability distribution is that all its probabilities must sum to 1. Therefore, <span class="math inline">\sum_x p_\theta(x) = 1</span>.</p>
+<p><span class="math display">\nabla_\theta f(\theta)|_{\theta=\theta_{old}} = - \nabla_\theta (1) = 0</span></p>
+<p>Because the derivative of a constant is zero, the entire first-order term vanishes.</p>
+<p>Since the zeroth-order and first-order terms are both exactly zero, the Taylor expansion relies entirely on the second-order term.</p>
+<p>Let <span class="math inline">H</span> denote the Hessian matrix (the matrix of second derivatives) of the KL divergence evaluated at <span class="math inline">\theta_{old}</span>:</p>
+<p><span class="math display">H = \nabla^2_\theta f(\theta)|_{\theta=\theta_{old}}</span></p>
+<p>Substituting <span class="math inline">H</span> into the second-order term of the Taylor polynomial gives us the final approximation:</p>
+<p><span class="math display">D_{KL}(p_{\theta_{old}} \parallel p_\theta) \approx 0 + 0 + \frac{1}{2} \Delta\theta^T H \Delta\theta</span></p>
+<p>This confirms that for small updates, the KL divergence is approximated purely by a quadratic penalty scaled by the Hessian matrix.</p>
+</section>
+<section id="sec-hf" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="sec-hf"><span class="header-section-number">5</span> Why <span class="math inline">H = F</span></h2>
+<p>Before evaluating it at <span class="math inline">\theta_{old}</span>, the generalized first derivative of the KL divergence was:</p>
+<p><span class="math display">\nabla_\theta D_{KL}(p_{\theta_{old}} \parallel p_\theta) = - \sum_x p_{\theta_{old}}(x) \nabla_\theta \log p_\theta(x)</span></p>
+<p>To find the Hessian matrix <span class="math inline">H</span>, we must take the derivative of this gradient with respect to <span class="math inline">\theta</span> a second time.</p>
+<p>We apply the gradient operator <span class="math inline">\nabla_\theta</span> to our first derivative. Because <span class="math inline">p_{\theta_{old}}(x)</span> is independent of <span class="math inline">\theta</span>, it acts as a constant, allowing us to move the derivative directly to the log-probability term:</p>
+<p><span class="math display">H = \nabla^2_\theta D_{KL}(p_{\theta_{old}} \parallel p_\theta) = - \sum_x p_{\theta_{old}}(x) \nabla^2_\theta \log p_\theta(x)</span></p>
+<p>Now we need to unpack the term <span class="math inline">\nabla^2_\theta \log p_\theta(x)</span>. From the log-derivative trick, we know the first derivative is:</p>
+<p><span class="math display">\nabla_\theta \log p_\theta(x) = \frac{\nabla_\theta p_\theta(x)}{p_\theta(x)}</span></p>
+<p>To find the second derivative, we apply the quotient rule to this fraction. For a multivariate function, this expands to:</p>
+<p><span class="math display">\nabla^2_\theta \log p_\theta(x) = \frac{\nabla^2_\theta p_\theta(x) p_\theta(x) - \nabla_\theta p_\theta(x) \nabla_\theta p_\theta(x)^T}{p_\theta(x)^2}</span></p>
+<p>We can split this fraction into two separate terms:</p>
+<p><span class="math display">\nabla^2_\theta \log p_\theta(x) = \frac{\nabla^2_\theta p_\theta(x)}{p_\theta(x)} - \left( \frac{\nabla_\theta p_\theta(x)}{p_\theta(x)} \right) \left( \frac{\nabla_\theta p_\theta(x)}{p_\theta(x)} \right)^T</span></p>
+<p>Notice that the second term is just the first derivative of the log-probability multiplied by its own transpose. We can substitute the log-derivative trick back in to simplify:</p>
+<p><span class="math display">\nabla^2_\theta \log p_\theta(x) = \frac{\nabla^2_\theta p_\theta(x)}{p_\theta(x)} - \nabla_\theta \log p_\theta(x) \nabla_\theta \log p_\theta(x)^T</span></p>
+<p>Now, we substitute this expanded form back into our equation for the Hessian matrix <span class="math inline">H</span>:</p>
+<p><span class="math display">H = - \sum_x p_{\theta_{old}}(x) \left[ \frac{\nabla^2_\theta p_\theta(x)}{p_\theta(x)} - \nabla_\theta \log p_\theta(x) \nabla_\theta \log p_\theta(x)^T \right]</span></p>
+<p>To find the specific Hessian for our Taylor expansion, we must evaluate this entire expression at the point <span class="math inline">\theta = \theta_{old}</span>.</p>
+<p><span class="math display">H = - \sum_x p_{\theta_{old}}(x) \left[ \frac{\nabla^2_\theta p_{\theta_{old}}(x)}{p_{\theta_{old}}(x)} - \nabla_\theta \log p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x)^T \right]</span></p>
+<p>We distribute the summation and the <span class="math inline">-p_{\theta_{old}}(x)</span> across the two terms inside the brackets.</p>
+<p>In the first term, the <span class="math inline">p_{\theta_{old}}(x)</span> in the numerator and denominator cancel each other out perfectly:</p>
+<p><span class="math display">H = - \sum_x \nabla^2_\theta p_{\theta_{old}}(x) + \sum_x p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x)^T</span></p>
+<p>Let us look closely at the first term: <span class="math inline">- \sum_x \nabla^2_\theta p_{\theta_{old}}(x)</span>. Because the derivative of a sum is the sum of the derivatives, we can pull the second derivative operator outside the summation:</p>
+<p><span class="math display">- \nabla^2_\theta \left( \sum_x p_{\theta_{old}}(x) \right)</span></p>
+<p>As established in the previous derivation, the sum of all probabilities in a valid distribution is exactly 1. The second derivative of the constant 1 is zero. Therefore, this entire first term evaluates to zero and disappears.</p>
+<p><span class="math display">H = 0 + \sum_x p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x)^T</span></p>
+<p>We are left with the final, simplified equation for the Hessian of the KL divergence evaluated at the current policy parameters:</p>
+<p><span class="math display">H = \sum_x p_{\theta_{old}}(x) \left[ \nabla_\theta \log p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x)^T \right]</span></p>
+<p>By definition, a summation over a probability distribution <span class="math inline">p(x)</span> multiplied by a function of <span class="math inline">x</span> is the expected value of that function. We can rewrite the equation as an expectation:</p>
+<p><span class="math display">H = \mathbb{E}_{x \sim p_{\theta_{old}}} \left[ \nabla_\theta \log p_{\theta_{old}}(x) \nabla_\theta \log p_{\theta_{old}}(x)^T \right]</span></p>
+<p>This final expression is the exact mathematical definition of the Fisher Information Matrix <span class="math inline">F</span>. The term inside the expectation is the outer product of the score function. This completes the proof. It mathematically justifies why TRPO can use the computationally convenient Fisher Information Matrix to define the local geometry of the probability space and satisfy the KL divergence trust-region constraint.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-kakadeNaturalPolicyGradient2001a" class="csl-entry" role="listitem">
+Kakade, Sham M. 2001. <span>“A <span>Natural Policy Gradient</span>.”</span> In <em>Advances in <span>Neural Information Processing Systems</span></em>. Vol. 14. MIT Press.
+</div>
+<div id="ref-schulmanTrustRegionPolicy2017" class="csl-entry" role="listitem">
+Schulman, John, Sergey Levine, Philipp Moritz, Michael I. Jordan, and Pieter Abbeel. 2017. <span>“Trust <span>Region Policy Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1502.05477">https://arxiv.org/abs/1502.05477</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
