@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-02-22">
 
-<title>From OS for Humans to an OS-Like Runtime for Agents: The OpenClaw Architecture – Policy Gradient Lab</title>
+<title>OpenClaw and the Rise of the Agent Runtime – Policy Gradient Lab</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,6 +20,41 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 </style>
 
@@ -102,7 +137,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">From OS for Humans to an OS-Like Runtime for Agents: The OpenClaw Architecture</h1>
+<h1 class="title">OpenClaw and the Rise of the Agent Runtime</h1>
 </div>
 
 
@@ -129,102 +164,144 @@ ul.task-list li input[type="checkbox"] {
    
   <ul>
   <li><a href="#introduction" id="toc-introduction"><span class="header-section-number">1</span> Introduction</a></li>
-  <li><a href="#von-neumann-metaphor" id="toc-von-neumann-metaphor"><span class="header-section-number">2</span> Von Neumann Metaphor</a></li>
-  <li><a href="#agentic-loop" id="toc-agentic-loop"><span class="header-section-number">3</span> Agentic Loop</a></li>
-  <li><a href="#memory-and-state" id="toc-memory-and-state"><span class="header-section-number">4</span> Memory and State</a></li>
-  <li><a href="#conclusion" id="toc-conclusion"><span class="header-section-number">5</span> Conclusion</a></li>
+  <li><a href="#a-von-neumann-metaphor-for-agent-systems" id="toc-a-von-neumann-metaphor-for-agent-systems"><span class="header-section-number">2</span> A von Neumann Metaphor for Agent Systems</a></li>
+  <li><a href="#the-agentic-loop-as-a-managed-execution-lifecycle" id="toc-the-agentic-loop-as-a-managed-execution-lifecycle"><span class="header-section-number">3</span> The Agentic Loop as a Managed Execution Lifecycle</a></li>
+  <li><a href="#memory-and-state-local-first-file-backed-auditable" id="toc-memory-and-state-local-first-file-backed-auditable"><span class="header-section-number">4</span> Memory and State: Local-First, File-Backed, Auditable</a></li>
   </ul>
 </nav>
 <section id="introduction" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">1</span> Introduction</h2>
-<p><a href="https://github.com/openclaw/openclaw">OpenClaw</a> isn’t an operating system in the kernel sense; it’s an always-on agent runtime built around a Gateway control plane—functionally an “Agent OS layer” on top of your real OS. Instead of optimizing for chat UX first, it shifts the center of gravity to a persistent runtime: a WebSocket control plane that routes inputs from multiple terminals into tool-capable execution with state, skills, and boundaries.</p>
-<ul>
-<li><p>When agents run long, chat-first systems struggle with tool races, partial output interleaving, and non-auditable state.</p></li>
-<li><p>When agents connect from multiple surfaces, “one chat = one brain” becomes a routing and authorization problem.</p></li>
-<li><p>When agents gain capabilities, prompt scripts become the new monolith.</p></li>
-</ul>
-<p>OpenClaw treats these as runtime problems, not prompting problems. This design demotes chat to just another terminal. CLI, web UI, macOS apps, and mobile/headless nodes can all serve as entry points into the same running system.&nbsp; Capability expansion is handled through skills: OpenClaw snapshots eligible skills when a session starts for performance, but can also <strong>refresh skills mid-session</strong> when the skills watcher is enabled (picked up on the next agent turn).&nbsp;</p>
-<p>Compared with typical dialogue-driven workflows (AutoGPT/LangChain-style), the key difference is that OpenClaw looks like an operational runtime: it standardizes connectivity, session execution lanes, and tool dispatch behind a single control plane, rather than treating the chat loop as the system’s core abstraction.</p>
+<p>Most LLM applications still treat the agent as an extension of the chat loop. OpenClaw starts from a different premise: once an agent becomes persistent, tool-using, and multi-surface, the real problem is no longer prompt formatting but runtime design.</p>
+<p>That shift is what makes OpenClaw interesting. It is not an operating system in the kernel sense. But it is an always-on agent runtime centered on a Gateway control plane, and it can be usefully understood as an agent-OS-like layer running above the host OS. Rather than optimizing for chat UX first, it shifts the center of gravity toward a persistent runtime: a Gateway that maintains provider connections, exposes a typed WebSocket API, and serves as the shared control plane for clients and nodes across surfaces.</p>
+<p>When agents run for multiple steps, the main challenge is no longer just prompting. It becomes a runtime problem: how to route messages, serialize execution, stream tool output coherently, preserve session state, and keep the system operable across multiple interfaces. OpenClaw approaches these concerns as infrastructure problems rather than as prompt-design problems. In that architecture, chat is not the whole system; it is one surface among several, alongside the CLI, web UI, macOS app, and connected nodes.</p>
+<p>Capability expansion is handled through skills. OpenClaw snapshots eligible skills when a session starts and reuses that list across turns in the same session for performance. When the skills watcher is enabled, or when a newly eligible remote node appears, that skill list can refresh mid-session and be picked up on the next agent turn.</p>
+<p>Compared with dialogue-centered agent setups, OpenClaw looks less like a chat wrapper and more like an operational runtime. The distinctive point is not merely that it can call tools, but that connectivity, session execution, queueing, routing, and tool dispatch are all organized behind a single control plane.</p>
 </section>
-<section id="von-neumann-metaphor" class="level2" data-number="2">
-<h2 data-number="2" class="anchored" data-anchor-id="von-neumann-metaphor"><span class="header-section-number">2</span> Von Neumann Metaphor</h2>
-<p>This is an architectural metaphor: OpenClaw doesn’t implement a kernel, but it <em>does</em> implement OS-like runtime responsibilities—control, I/O multiplexing, state continuity, and execution governance—at the agent layer.</p>
-<ul>
-<li><p><strong>The Gateway (Control Plane):</strong> OpenClaw’s Gateway acts as both the system controller and the data bus. It unifies access across different terminals and background nodes, manages session routing, uses role/scope as connection context for routing/authorization, and dispatches user “intents” to the appropriate executable capabilities.</p></li>
-<li><p><strong>Compute (LLM):</strong> In this paradigm, the LLM plays the role of a general-purpose processor: not crunching numbers, but performing inference-driven planning and tool selection.</p></li>
-<li><p><strong>Memory:</strong> The agent’s memory architecture is highly stratified. The LLM’s context window acts as short-term cache (L1), the session state acts as active RAM (L2), while long-term task statuses, skill snapshots, and persistent execution logs form the system’s hard drive.</p></li>
-<li><p><strong>I/O:</strong> Interfaces like the CLI, Web dashboard, macOS app, Slack, or WhatsApp are simply different hardware peripherals. They are no longer isolated product UIs; they are multiplexed input/output devices feeding into the exact same computational entity.</p></li>
-<li><p><strong>Skills:</strong> Skills function as installable, composable instruction set extensions. By encapsulating tool interfaces, usage constraints, and behavioral patterns into modular units loaded at runtime, the agent’s capabilities can scale without relying on massive, hardcoded prompt scripts.</p></li>
-<li><p><strong>Tools &amp; Nodes:</strong> The local file system, headless browser automation, shell environments, and third-party APIs make up the agent’s external physical world. OpenClaw’s breakthrough isn’t simply that it interacts with these tools, but that it brings their execution under strict, unified runtime governance—managing connections, routing, security boundaries, and auditing.</p></li>
-</ul>
+<section id="a-von-neumann-metaphor-for-agent-systems" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="a-von-neumann-metaphor-for-agent-systems"><span class="header-section-number">2</span> A von Neumann Metaphor for Agent Systems</h2>
+<p>The best way to understand this shift is as an architectural metaphor. OpenClaw does not implement a kernel, but it does assume a set of OS-like responsibilities at the agent layer: control, I/O coordination, state continuity, execution governance, and bounded tool access.</p>
+<p>At the center sits the Gateway, which functions as both controller and bus. It owns messaging surfaces, accepts WebSocket connections from clients and nodes, validates frames, emits typed events, and uses a structured handshake in which role, device identity, and capabilities are declared up front. That gives OpenClaw a unified control plane for routing, pairing, presence, and command flow across interfaces.</p>
+<p>Within that system, the LLM plays the role of the general-purpose inference engine. It is the component that plans, selects tools, and generates responses, while the Gateway and runtime provide the scaffolding that keeps those actions connected to sessions, channels, tools, and policy boundaries. OpenClaw explicitly treats the agent as a managed session with lifecycle control, event handling, prompt customization, persistence, compaction, and model switching.</p>
+<p>The memory hierarchy is likewise layered, though only metaphorically. The immediate model context acts like short-term working state; the session runtime preserves active continuity for the turn; and longer-lived workspace files, session artifacts, and diagnostics provide durable state on disk. OpenClaw’s design makes the durable layer unusually explicit by storing memory in Markdown files inside the workspace and treating those files as canonical.</p>
+<p>The interfaces around that runtime—CLI, web UI, WebChat, macOS app, and nodes—function like multiplexed I/O surfaces attached to the same computational system. They are not isolated assistants with separate brains; they are different entry points into a shared Gateway-managed runtime.</p>
+<p>To expand capabilities, OpenClaw uses skills as modular runtime extensions. Skills are loaded into the session environment and prompt, can be bundled, managed, or workspace-based, and can refresh dynamically under documented conditions. This makes capability growth more composable than relying entirely on one large, hardcoded prompt.</p>
+<p>Finally, tools and nodes—local files, browser control, shell execution, APIs, camera, screen recording, location, and other commands—form the agent’s operational environment. OpenClaw’s important move is not simply that the agent can reach those tools, but that access is brought under a common runtime model with pairing, approval, queueing, sandbox options, typed events, and logging.</p>
 </section>
-<section id="agentic-loop" class="level2" data-number="3">
-<h2 data-number="3" class="anchored" data-anchor-id="agentic-loop"><span class="header-section-number">3</span> Agentic Loop</h2>
-<p>OpenClaw defines the agentic loop as a full execution lifecycle and explicitly notes that runs are serialized per session key (a session lane) to avoid tool/session races and keep history consistent.&nbsp; In practice, that means the runtime treats “a turn” as an execution unit with scheduling, streaming, and accounting concerns—exactly the kind of machinery you need when an agent can call tools, run for multiple steps, and still remain operable and debuggable.</p>
+<section id="the-agentic-loop-as-a-managed-execution-lifecycle" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="the-agentic-loop-as-a-managed-execution-lifecycle"><span class="header-section-number">3</span> The Agentic Loop as a Managed Execution Lifecycle</h2>
+<p>OpenClaw defines the agentic loop as the full authoritative execution path of a run: intake, context assembly, model inference, tool execution, streaming replies, and persistence. Runs are serialized per session key, optionally through a global lane, to prevent tool and session races while keeping history consistent.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode ts code-with-copy"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">async</span> <span class="kw">function</span> <span class="fu">runEmbeddedPiAgent</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  params<span class="op">:</span> RunEmbeddedPiAgentParams<span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>EmbeddedPiRunResult<span class="op">&gt;</span> {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> sessionLane <span class="op">=</span> <span class="fu">resolveSessionLane</span>(params<span class="op">.</span><span class="at">sessionKey</span><span class="op">?.</span><span class="fu">trim</span>() <span class="op">||</span> params<span class="op">.</span><span class="at">sessionId</span>)<span class="op">;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> globalLane <span class="op">=</span> <span class="fu">resolveGlobalLane</span>(params<span class="op">.</span><span class="at">lane</span>)<span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> enqueueGlobal <span class="op">=</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    params<span class="op">.</span><span class="at">enqueue</span> <span class="op">??</span> ((task<span class="op">,</span> opts) <span class="kw">=&gt;</span> <span class="fu">enqueueCommandInLane</span>(globalLane<span class="op">,</span> task<span class="op">,</span> opts))<span class="op">;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> enqueueSession <span class="op">=</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    params<span class="op">.</span><span class="at">enqueue</span> <span class="op">??</span> ((task<span class="op">,</span> opts) <span class="kw">=&gt;</span> <span class="fu">enqueueCommandInLane</span>(sessionLane<span class="op">,</span> task<span class="op">,</span> opts))<span class="op">;</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="fu">enqueueSession</span>(() <span class="kw">=&gt;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">enqueueGlobal</span>(<span class="kw">async</span> () <span class="kw">=&gt;</span> {</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      <span class="co">// run body</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    })<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>In practice, this means a turn is treated as an execution unit with scheduling, locking, streaming, and usage metadata—not as a bare completion call. The runtime validates the request, resolves the session, persists metadata, loads the skills snapshot, subscribes to agent events, enforces timeouts, and returns usage metadata at the end of the run.</p>
 <section id="perception" class="level3" data-number="3.1">
 <h3 data-number="3.1" class="anchored" data-anchor-id="perception"><span class="header-section-number">3.1</span> Perception</h3>
-<p>When a new message arrives, OpenClaw doesn’t immediately “ask the LLM.” The code first decides <em>how</em> that message should enter the system — for example, whether it should be routed into an already-running session (steering an ongoing run) or start a new turn. That means the message is treated like a control signal in a running system, not merely text to append to a prompt.</p>
+<p>When a new message arrives, OpenClaw does not always treat it as a brand-new prompt append. The queueing layer first determines how that message should enter the system: it can steer the current run, wait for a follow-up turn, or be collected with other queued messages. In steer mode, inbound input can be injected into the active run and pending tool calls are canceled after the next tool boundary. That makes the message part of a live control flow, not just another line of chat history.</p>
 </section>
 <section id="reasoning" class="level3" data-number="3.2">
 <h3 data-number="3.2" class="anchored" data-anchor-id="reasoning"><span class="header-section-number">3.2</span> Reasoning</h3>
-<p>Once the system commits to running a turn, it goes through a dedicated execution path that’s designed to be resilient. Instead of assuming every run will be “clean,” the runtime includes recovery behavior for known failure modes (e.g., transcript/compaction issues). In other words, the code treats a turn as something that must be correct and restartable, not just “one more completion call.”</p>
+<p>Once the system commits to a turn, it follows a dedicated lifecycle. Workspace resolution, bootstrap-context injection, skills loading or reuse from snapshot, session locking, prompt assembly, model execution, and event bridging are all part of the run path.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode ts code-with-copy"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> started <span class="op">=</span> <span class="bu">Date</span><span class="op">.</span><span class="fu">now</span>()<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> workspaceResolution <span class="op">=</span> <span class="fu">resolveRunWorkspaceDir</span>({</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  workspaceDir<span class="op">:</span> params<span class="op">.</span><span class="at">workspaceDir</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  sessionKey<span class="op">:</span> params<span class="op">.</span><span class="at">sessionKey</span><span class="op">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  agentId<span class="op">:</span> params<span class="op">.</span><span class="at">agentId</span><span class="op">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  config<span class="op">:</span> params<span class="op">.</span><span class="at">config</span><span class="op">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> resolvedWorkspace <span class="op">=</span> workspaceResolution<span class="op">.</span><span class="at">workspaceDir</span><span class="op">;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> hookRunner <span class="op">=</span> <span class="fu">getGlobalHookRunner</span>()<span class="op">;</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> hookCtx <span class="op">=</span> {</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  agentId<span class="op">:</span> workspaceResolution<span class="op">.</span><span class="at">agentId</span><span class="op">,</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  sessionKey<span class="op">:</span> params<span class="op">.</span><span class="at">sessionKey</span><span class="op">,</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  sessionId<span class="op">:</span> params<span class="op">.</span><span class="at">sessionId</span><span class="op">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  workspaceDir<span class="op">:</span> resolvedWorkspace<span class="op">,</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  messageProvider<span class="op">:</span> params<span class="op">.</span><span class="at">messageProvider</span> <span class="op">??</span> <span class="dt">undefined</span><span class="op">,</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  trigger<span class="op">:</span> params<span class="op">.</span><span class="at">trigger</span><span class="op">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  channelId<span class="op">:</span> params<span class="op">.</span><span class="at">messageChannel</span> <span class="op">??</span> params<span class="op">.</span><span class="at">messageProvider</span> <span class="op">??</span> <span class="dt">undefined</span><span class="op">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>}<span class="op">;</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (hookRunner<span class="op">?.</span><span class="fu">hasHooks</span>(<span class="st">"before_model_resolve"</span>)) {</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  modelResolveOverride <span class="op">=</span> <span class="cf">await</span> hookRunner<span class="op">.</span><span class="fu">runBeforeModelResolve</span>(</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>    { prompt<span class="op">:</span> params<span class="op">.</span><span class="at">prompt</span> }<span class="op">,</span></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>    hookCtx<span class="op">,</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>  )<span class="op">;</span></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> { model<span class="op">,</span> error<span class="op">,</span> authStorage<span class="op">,</span> modelRegistry } <span class="op">=</span> <span class="fu">resolveModel</span>(</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>  provider<span class="op">,</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>  modelId<span class="op">,</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>  agentDir<span class="op">,</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  params<span class="op">.</span><span class="at">config</span><span class="op">,</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>OpenClaw therefore treats a run as a managed lifecycle with consistency guarantees, not simply as an isolated model call.</p>
 </section>
 <section id="action" class="level3" data-number="3.3">
 <h3 data-number="3.3" class="anchored" data-anchor-id="action"><span class="header-section-number">3.3</span> Action</h3>
-<p>OpenClaw treats tool execution as a first-class part of the loop: tool starts/updates/results are surfaced as structured events, and the runtime explicitly manages output boundaries (so you don’t end up with half an assistant message interleaved with tool output). This is the kind of detail you only build if you’re thinking in terms of an agent runtime with real actions and streaming, not a chat demo that happens to call tools.</p>
+<p>Tool execution is a first-class element of that loop. OpenClaw bridges tool events into the agent stream, distinguishes assistant deltas from tool deltas and lifecycle events, and supports block streaming with tool-start summaries and Control UI streaming of tool output when available. The result is a clearer separation between assistant output and tool activity than in systems where everything is flattened into one text stream.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode ts code-with-copy"><code class="sourceCode typescript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> subscription <span class="op">=</span> <span class="fu">subscribeEmbeddedPiSession</span>({</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  session<span class="op">:</span> activeSession<span class="op">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  runId<span class="op">:</span> params<span class="op">.</span><span class="at">runId</span><span class="op">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  onToolResult<span class="op">:</span> params<span class="op">.</span><span class="at">onToolResult</span><span class="op">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  onReasoningStream<span class="op">:</span> params<span class="op">.</span><span class="at">onReasoningStream</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  onBlockReply<span class="op">:</span> params<span class="op">.</span><span class="at">onBlockReply</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  onPartialReply<span class="op">:</span> params<span class="op">.</span><span class="at">onPartialReply</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  onAgentEvent<span class="op">:</span> params<span class="op">.</span><span class="at">onAgentEvent</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
 <section id="feedback" class="level3" data-number="3.4">
 <h3 data-number="3.4" class="anchored" data-anchor-id="feedback"><span class="header-section-number">3.4</span> Feedback</h3>
-<p>Finally, OpenClaw serializes execution at the session level and tracks usage/metrics as part of the run, which is what you’d expect from a system you can operate in production (where concurrency and accounting matter). This matches the docs’ claim that runs are serialized per session and implemented as a lifecycle pipeline, but the key point is: the repo actually contains the scheduling and accounting machinery to make that true.</p>
-<p>OpenClaw’s main difference isn’t that it has tools — it’s that it treats the agent loop as a managed, observable, restartable runtime:</p>
-<ul>
-<li><p>input can steer an ongoing run (not always spawn a new chat completion),</p></li>
-<li><p>turns have operational guardrails,</p></li>
-<li><p>tool execution is streamed and ordered as events,</p></li>
-<li><p>and session execution is serialized and accounted for like a service.</p></li>
-</ul>
+<p>OpenClaw also treats observability as part of the run. Its logging and diagnostics cover queueing behavior, session state, run timing, token usage, cost, and message-processing events. This does not make the system magically infallible, but it does mean the runtime is instrumented in a way that supports operation and debugging rather than leaving behavior opaque.</p>
+<p>Ultimately, OpenClaw’s main difference is not that it has tools, but that it treats the agent loop as a managed, observable, and serialized runtime. Input can steer an ongoing run, tool activity is surfaced as structured events, and execution is organized with queueing and accounting discipline rather than left to an implicit chat loop.</p>
+<p>This is the difference between an agent that merely calls tools and an agent that can be operated. Once runs become long-lived and interactive, scheduling, serialization, and event boundaries are not implementation details; they are core product behavior.</p>
 </section>
 </section>
-<section id="memory-and-state" class="level2" data-number="4">
-<h2 data-number="4" class="anchored" data-anchor-id="memory-and-state"><span class="header-section-number">4</span> Memory and State</h2>
-<p>When building agentic systems, the industry instinct is to reach for a vector database early. OpenClaw takes a more systems-first approach: memory is local-first and file-backed, designed to be human-auditable and privacy-scoped, while retrieval (including vector search) is treated as an acceleration layer on top of canonical files.&nbsp;</p>
-<p>A key design choice is separation: OpenClaw distinguishes between always-on “identity/operating state” (bootstrap files injected into runs) and episodic memory stored as workspace notes that can be searched and pulled in when needed. This structure helps teams reason about what is consistently present in the model context versus what is selectively recalled.&nbsp;</p>
-<section id="markdown-on-disk-is-the-source-of-truth" class="level3" data-number="4.1">
-<h3 data-number="4.1" class="anchored" data-anchor-id="markdown-on-disk-is-the-source-of-truth"><span class="header-section-number">4.1</span> Markdown-on-Disk is the Source of Truth</h3>
-<p>OpenClaw memory is plain Markdown in the agent workspace, and the docs state that the <strong>files are the source of truth</strong>—the model only “remembers” what gets written to disk.&nbsp;</p>
-<p>Operationally, OpenClaw also recommends treating the workspace as private memory and putting it in a private git repo so it’s backed up and recoverable—making memory changes naturally diffable and reviewable.&nbsp;</p>
+<section id="memory-and-state-local-first-file-backed-auditable" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="memory-and-state-local-first-file-backed-auditable"><span class="header-section-number">4</span> Memory and State: Local-First, File-Backed, Auditable</h2>
+<p>When people build agents, the instinct is often to start with a vector database. OpenClaw takes a more systems-first approach: memory is local-first, file-backed, and human-auditable, while semantic retrieval is layered on top of canonical files rather than replacing them. Memory is plain Markdown in the agent workspace, and those files are the source of truth.</p>
+<section id="markdown-on-disk-as-the-source-of-truth" class="level3" data-number="4.1">
+<h3 data-number="4.1" class="anchored" data-anchor-id="markdown-on-disk-as-the-source-of-truth"><span class="header-section-number">4.1</span> Markdown-on-Disk as the Source of Truth</h3>
+<p>OpenClaw memory lives in workspace files, not in an opaque memory service. The model only “remembers” what gets written to disk. This design makes state inspectable, editable, and diffable by ordinary filesystem tools. In practice, it also makes the workspace easy to back up and version.</p>
 </section>
 <section id="separating-identity-from-episodic-memory" class="level3" data-number="4.2">
 <h3 data-number="4.2" class="anchored" data-anchor-id="separating-identity-from-episodic-memory"><span class="header-section-number">4.2</span> Separating Identity from Episodic Memory</h3>
-<p>OpenClaw’s workspace layout separates “identity and operating rules” from “notes and recall”:</p>
-<ul>
-<li><p><strong>The Constitution</strong> (SOUL.md, AGENTS.md, USER.md, etc.)<strong>:</strong> These are workspace bootstrap files that OpenClaw injects (trimmed) into the system prompt for agent runs, providing consistent identity/profile context.&nbsp;</p></li>
-<li><p><strong>The Episodic Layer</strong> (MEMORY.md, memory/YYYY-MM-DD.md)<strong>:</strong> The memory docs define two memory layers: a daily log (memory/YYYY-MM-DD.md) and an optional curated long-term file (MEMORY.md) for durable facts and preferences.&nbsp;</p></li>
-</ul>
-<p><strong>Rule of thumb:</strong> use SOUL.md (and other bootstrap files) for principles and boundaries that should be consistently present; use MEMORY.md / daily logs for durable facts and running context that the system can recall via memory tools.&nbsp;</p>
+<p>OpenClaw also separates bootstrap identity and operating context from recall-oriented memory. In the workspace, it expects user-editable files such as AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, and USER.md; during session startup, the template flow directs the agent to read SOUL.md, USER.md, recent daily memory, and, in the main session, MEMORY.md. This creates a practical distinction between always-present operating context and selectively accumulated memory.</p>
 </section>
 <section id="privacy-boundaries-as-a-first-class-rule" class="level3" data-number="4.3">
 <h3 data-number="4.3" class="anchored" data-anchor-id="privacy-boundaries-as-a-first-class-rule"><span class="header-section-number">4.3</span> Privacy Boundaries as a First-Class Rule</h3>
-<p>OpenClaw explicitly scopes MEMORY.md to load only in the main, private session and <em>not</em> in group contexts, which reduces accidental leakage of private long-term context into shared channels by default.&nbsp;</p>
+<p>That separation is paired with an explicit privacy rule. MEMORY.md, the curated long-term memory file, is loaded only in the main private session and never in group contexts. This materially reduces the chance that long-term personal context is injected into shared channels by default.</p>
 </section>
 <section id="vector-search-is-a-derived-capability" class="level3" data-number="4.4">
 <h3 data-number="4.4" class="anchored" data-anchor-id="vector-search-is-a-derived-capability"><span class="header-section-number">4.4</span> Vector Search is a Derived Capability</h3>
-<p>OpenClaw can build a vector index over MEMORY.md and memory/*.md so semantic queries work even when wording differs. The docs are explicit that the canonical memory remains Markdown, while memory search is provided by a plugin and uses SQLite internally (optionally accelerated by sqlite-vec when available).&nbsp;</p>
-<p>In other words, <strong>storage and retrieval are intentionally decoupled</strong>: the index is derived from the files rather than replacing them as the “truth.”&nbsp;</p>
+<p>OpenClaw does support semantic and hybrid retrieval, but the retrieval layer is deliberately downstream of the files themselves. The memory plugin provides search and retrieval functions, and the system supports hybrid search, reranking, temporal weighting, and optional vector acceleration. The important design point is that the index is derived from Markdown rather than replacing Markdown as the canonical store.</p>
 </section>
 <section id="pluggable-retrieval-backends" class="level3" data-number="4.5">
 <h3 data-number="4.5" class="anchored" data-anchor-id="pluggable-retrieval-backends"><span class="header-section-number">4.5</span> Pluggable Retrieval Backends</h3>
-<p>Because Markdown stays canonical, OpenClaw can swap retrieval engines without changing the underlying memory format. The docs describe an experimental QMD backend as a local-first sidecar that combines BM25 + vectors + reranking, with OpenClaw shelling out to QMD for retrieval.&nbsp;</p>
-<p>OpenClaw’s memory design makes agent state inspectable and operable: critical identity/boundary context lives in explicit workspace files that can be versioned, while large-scale recall is handled through a derived search layer rather than a black-box database. That combination is well-suited for teams that care about auditability and predictable behavior in production.</p>
-</section>
-</section>
-<section id="conclusion" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">5</span> Conclusion</h2>
-<p>The shift from a conversational wrapper to an OS-like runtime isn’t just an engineering preference—it’s what makes agentic systems operable. By centralizing connectivity through the Gateway, enforcing execution guardrails in the agentic loop, and anchoring state in an auditable, local-first memory structure, OpenClaw directly targets the friction points that show up in production: tool races, interleaved outputs, multi-surface routing complexity, and opaque state.</p>
-<p>More importantly, this runtime discipline opens a path to better alignment and post-training for agents. Because OpenClaw serializes each turn into structured, observable events, it naturally produces high-fidelity trajectory data: model reasoning, tool invocation, tool results, and environment feedback—cleanly separated and replayable. That’s exactly the kind of scaffolding you want when applying preference learning or reinforcement learning techniques (e.g., DPO/PPO-style approaches) to end-to-end agent workflows, not just single-shot generations.</p>
-<p>Frameworks will always be great for prototyping an agent’s logic. But operating agents safely at scale requires a runtime with governance, observability, and auditable state. OpenClaw isn’t just redefining how we talk to LLMs—it’s defining the operational baseline for <strong>next-generation autonomy</strong>.</p>
+<p>Because the files remain canonical, OpenClaw can vary the retrieval backend without changing the memory format. That keeps storage and retrieval decoupled and makes the system more operable for teams that care about inspectability over black-box persistence.</p>
+<p>This memory design is one of OpenClaw’s clearest systems choices. Critical identity and behavioral context live in explicit workspace files; episodic and durable recall live in Markdown memory layers; and semantic retrieval is an optional acceleration layer rather than the core substrate.</p>
+<p>That tradeoff is significant. It favors inspectability and operational trust over the illusion of “magical memory,” which is often harder to debug, harder to govern, and harder to recover when things go wrong. ## Conclusion</p>
+<p>The shift from a conversational wrapper to a runtime-centric design is not merely aesthetic. OpenClaw centralizes connectivity through the Gateway, serializes agent execution by session lane, exposes queue modes that can steer or defer input, and anchors longer-lived memory in auditable workspace files. Together, those choices target the operational friction that appears once agents become persistent, tool-using, and multi-surface.</p>
+<p>Just as importantly, this runtime discipline creates cleaner operational traces. Because OpenClaw separates lifecycle events, assistant output, tool events, queueing behavior, session state, and usage telemetry, it appears well suited to collecting structured agent trajectories. That does not mean the project officially positions itself as an RLHF or post-training framework; rather, it suggests that OpenClaw provides a promising substrate for future preference-learning or reinforcement-learning-style work on end-to-end agent behavior.</p>
+<p>Frameworks remain excellent for prototyping agent logic. But operating agents across real tools, real sessions, and real interfaces requires governance, observability, and state you can actually inspect. OpenClaw’s significance is that it pushes those concerns into the runtime itself and treats them as first-class system design problems.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->
