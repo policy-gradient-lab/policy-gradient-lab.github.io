@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-03-06">
 
-<title>PPO Series 2: Trust Region Policy Optimization – Policy Gradient Lab</title>
+<title>LLM Alignment Series 2: Trust Region Policy Optimization – Policy Gradient Lab</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -165,7 +165,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">PPO Series 2: Trust Region Policy Optimization</h1>
+<h1 class="title">LLM Alignment Series 2: Trust Region Policy Optimization</h1>
 </div>
 
 
@@ -213,8 +213,8 @@ window.Quarto = {
   <li><a href="#sec-hf" id="toc-sec-hf"><span class="header-section-number">5</span> Why <span class="math inline">H = F</span></a></li>
   </ul>
 </nav>
-<p>Trust Region Policy Optimization (TRPO) <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman et al. 2017</a>)</span> is a policy-based reinforcement learning method that shares the same fundamental objective function as standard policy gradient algorithms: maximizing the expected value <span class="math inline">J(\theta) = \mathbb{E}_S[V_\pi(S)]</span>.</p>
-<p>As shown by the Policy Gradient Theorem (see my previous post <a href="../../../posts/2026/ppo-series-1-policy-gradient-theorem/">PPO Series 1: The Policy Gradient Theorem</a>), this objective can be optimized by estimating the gradient of <span class="math inline">J(\theta)</span> with respect to the policy parameters. Importantly, TRPO does not change this objective; instead, it modifies how the policy update is performed by constraining how far the new policy can move from the old one. While standard policy gradient algorithms rely on stochastic gradient ascent to improve the policy, TRPO utilizes a trust-region algorithm. This approach ensures more stable and reliable updates by constraining how much the policy can change in a single step, helping to prevent the performance collapses often seen with traditional gradient methods.</p>
+<p>Trust Region Policy Optimization (TRPO) <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman, Levine, et al. 2017</a>)</span> is a policy-based reinforcement learning method that shares the same fundamental objective function as standard policy gradient algorithms: maximizing the expected value <span class="math inline">J(\theta) = \mathbb{E}_S[V_\pi(S)]</span>.</p>
+<p>As shown by the Policy Gradient Theorem (see my previous post <a href="../../../posts/2026/llm-alignment-series-1-policy-gradient-theorem/">LLM Alignment Series 1: The Policy Gradient Theorem</a>), this objective can be optimized by estimating the gradient of <span class="math inline">J(\theta)</span> with respect to the policy parameters. Importantly, TRPO does not change this objective; instead, it modifies how the policy update is performed by constraining how far the new policy can move from the old one. While standard policy gradient algorithms rely on stochastic gradient ascent to improve the policy, TRPO utilizes a trust-region algorithm. This approach ensures more stable and reliable updates by constraining how much the policy can change in a single step, helping to prevent the performance collapses often seen with traditional gradient methods. In the next post <a href="../../../posts/2026/llm-alignment-series-3-ppo/">LLM Alignment Series 3: Proximal Policy Optimization</a>, we will see how Proximal Policy Optimization (PPO) builds on the same idea but replaces the trust-region constraint with a simpler clipped objective <span class="citation" data-cites="schulmanProximalPolicyOptimization2017">(<a href="#ref-schulmanProximalPolicyOptimization2017" role="doc-biblioref">Schulman, Wolski, et al. 2017</a>)</span> that is easier to implement in modern deep learning pipelines.</p>
 <section id="trust-region-optimization" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="trust-region-optimization"><span class="header-section-number">1</span> Trust Region Optimization</h2>
 <p>At its core, Trust Region optimization is a strategy for safely navigating complex, non-linear objective functions <span class="math inline">f(x)</span> by relying on bounded local approximations. Instead of picking a direction and then guessing a step size like standard line search methods, trust region methods first define a safe maximum step distance, and then find the optimal update within that strict boundary.</p>
@@ -240,7 +240,7 @@ window.Quarto = {
 <p>Instead of directly maximizing the expected return <span class="math inline">J(\theta)</span>, TRPO optimizes a surrogate objective function. Let <span class="math inline">\theta_{old}</span> be the parameters of the current policy and <span class="math inline">\theta</span> be the parameters of the proposed new policy. TRPO seeks to maximize the following expected advantage:</p>
 <p><span class="math display">L(\theta) = \mathbb{E}_{s, a \sim \pi_{\theta_{old}}} \left[ \frac{\pi_{\theta}(a|s)}{\pi_{\theta_{old}}(a|s)} A_{\theta_{old}}(s, a) \right]</span></p>
 <p>In this equation, <span class="math inline">A_{\theta_{old}}(s, a)</span> is the advantage function, which measures how much better a specific action is compared to the average baseline action in a given state. The ratio <span class="math inline">\frac{\pi_{\theta}(a|s)}{\pi_{\theta_{old}}(a|s)}</span> tracks how the probability of taking that action changes under the new policy.</p>
-<p>It was proved that the true objective <span class="math inline">J(\theta)</span> is mathematically guaranteed to improve as long as <span class="math inline">L(\theta)</span> improves and the Kullback-Leibler divergence between the old and new policies is strictly penalized <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman et al. 2017</a>)</span> . By enforcing a hard constraint on this KL divergence, TRPO traps the optimization step inside a safe, narrow boundary where <span class="math inline">L(\theta)</span> remains a valid and reliable proxy for <span class="math inline">J(\theta)</span>.</p>
+<p>It was proved that the true objective <span class="math inline">J(\theta)</span> is mathematically guaranteed to improve as long as <span class="math inline">L(\theta)</span> improves and the Kullback-Leibler divergence between the old and new policies is strictly penalized <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman, Levine, et al. 2017</a>)</span> . By enforcing a hard constraint on this KL divergence, TRPO traps the optimization step inside a safe, narrow boundary where <span class="math inline">L(\theta)</span> remains a valid and reliable proxy for <span class="math inline">J(\theta)</span>.</p>
 </section>
 <section id="the-kl-divergence-constraint" class="level3" data-number="2.2">
 <h3 data-number="2.2" class="anchored" data-anchor-id="the-kl-divergence-constraint"><span class="header-section-number">2.2</span> The KL Divergence Constraint</h3>
@@ -474,6 +474,9 @@ Kakade, Sham M. 2001. <span>“A <span>Natural Policy Gradient</span>.”</span>
 </div>
 <div id="ref-schulmanTrustRegionPolicy2017" class="csl-entry" role="listitem">
 Schulman, John, Sergey Levine, Philipp Moritz, Michael I. Jordan, and Pieter Abbeel. 2017. <span>“Trust <span>Region Policy Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1502.05477">https://arxiv.org/abs/1502.05477</a>.
+</div>
+<div id="ref-schulmanProximalPolicyOptimization2017" class="csl-entry" role="listitem">
+Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. <span>“Proximal <span>Policy Optimization Algorithms</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1707.06347">https://arxiv.org/abs/1707.06347</a>.
 </div>
 </div></section></div></main> <!-- /main -->
 <script>

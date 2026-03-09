@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-03-08">
+
+<title>LLM Alignment Series 3: Proximal Policy Optimization – Policy Gradient Lab</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-93c8e7af82e4d696d10af310f1e9abe1.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">LLM Alignment Series 3: Proximal Policy Optimization</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 8, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#clipped-surrogate-objective" id="toc-clipped-surrogate-objective"><span class="header-section-number">1</span> Clipped Surrogate Objective</a>
+  <ul>
+  <li><a href="#the-probability-ratio" id="toc-the-probability-ratio"><span class="header-section-number">1.1</span> The Probability Ratio</a></li>
+  <li><a href="#the-clipped-surrogate-objective" id="toc-the-clipped-surrogate-objective"><span class="header-section-number">1.2</span> The Clipped Surrogate Objective</a></li>
+  <li><a href="#asymmetric-stabilization" id="toc-asymmetric-stabilization"><span class="header-section-number">1.3</span> Asymmetric Stabilization</a></li>
+  </ul></li>
+  <li><a href="#generalized-advantage-estimation" id="toc-generalized-advantage-estimation"><span class="header-section-number">2</span> Generalized Advantage Estimation</a>
+  <ul>
+  <li><a href="#from-td-residuals-to-the-gae-estimator" id="toc-from-td-residuals-to-the-gae-estimator"><span class="header-section-number">2.1</span> From TD Residuals to the GAE Estimator</a></li>
+  </ul></li>
+  <li><a href="#ppo-training-pipeline" id="toc-ppo-training-pipeline"><span class="header-section-number">3</span> PPO Training Pipeline</a>
+  <ul>
+  <li><a href="#the-full-ppo-objective" id="toc-the-full-ppo-objective"><span class="header-section-number">3.1</span> The Full PPO Objective</a></li>
+  <li><a href="#rollout-buffer-vs.-replay-buffer" id="toc-rollout-buffer-vs.-replay-buffer"><span class="header-section-number">3.2</span> Rollout Buffer vs.&nbsp;Replay Buffer</a></li>
+  </ul></li>
+  <li><a href="#ppo-and-the-computational-cost-of-rlhf" id="toc-ppo-and-the-computational-cost-of-rlhf"><span class="header-section-number">4</span> PPO and the Computational Cost of RLHF</a></li>
+  <li><a href="#beyond-ppo" id="toc-beyond-ppo"><span class="header-section-number">5</span> Beyond PPO</a></li>
+  </ul>
+</nav>
+<p>When Proximal Policy Optimization (PPO) was introduced in 2017, much of deep reinforcement learning was focused on high-dimensional control problems. The original PPO paper <span class="citation" data-cites="schulmanProximalPolicyOptimization2017">(<a href="#ref-schulmanProximalPolicyOptimization2017" role="doc-biblioref">Schulman, Wolski, et al. 2017</a>)</span> evaluated the method on benchmark tasks that included continuous control in MuJoCo and discrete environments such as Atari. At the time, reinforcement learning was shaped mainly by deep Q-learning, vanilla policy gradient methods, and trust region policy optimization (TRPO) <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman, Levine, et al. 2017</a>)</span>. These methods had already shown strong results, but they also revealed a practical gap: the field still lacked a policy optimization method that was stable, sample-efficient, and easy to train with standard neural network pipelines.</p>
+<p>PPO was introduced as a practical answer to that problem. It kept the central motivation behind TRPO (see my previous post <a href="../../../posts/2026/llm-alignment-series-2-trpo/">LLM Alignment Series 2: Trust Region Policy Optimization</a>), namely controlling the size of policy updates, but replaced TRPO’s more complicated constrained optimization procedure with a simpler objective that could be optimized using ordinary first-order methods. In the original experiments, PPO performed well on robotic locomotion tasks, where simulated humanoids learned to run, steer, and recover from perturbations. These results showed that the method could handle continuous action spaces and fairly complex dynamics without sacrificing training stability.</p>
+<p>The same design choices that made PPO effective in robotic control later made it useful for large-scale language model alignment. TRPO offered stronger theoretical machinery, but in practice it depended on second-order approximations and conjugate gradient steps that were awkward to incorporate into standard deep learning workflows. PPO simplified this setup by introducing a clipped surrogate objective that serves as a practical approximation to trust-region-style updates while remaining fully compatible with first-order optimization. In PPO, training alternates between collecting data and performing several epochs of stochastic gradient updates on that same batch.</p>
+<p>When large transformer language models became the focus of alignment work, these properties made PPO a natural choice for reinforcement learning from human feedback. With models containing billions of parameters, second-order optimization is generally too expensive to be practical. At the same time, fine-tuning must remain stable enough to improve behavior without damaging the linguistic structure learned during pretraining. PPO offered a workable tradeoff: it constrained policy updates through clipping, allowed multiple updates on the same batch, and fit naturally into existing deep learning training systems. What began as a method for stabilizing reinforcement learning in simulated control environments later became one of the central optimization methods used in RLHF.</p>
+<section id="clipped-surrogate-objective" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="clipped-surrogate-objective"><span class="header-section-number">1</span> Clipped Surrogate Objective</h2>
+<p>To understand how PPO extracts multiple optimization steps from a single batch of experience, we need to examine the mathematical mechanism that governs its updates: the probability ratio and the clipped surrogate objective.</p>
+<section id="the-probability-ratio" class="level3" data-number="1.1">
+<h3 data-number="1.1" class="anchored" data-anchor-id="the-probability-ratio"><span class="header-section-number">1.1</span> The Probability Ratio</h3>
+<p>The construction begins with the probability ratio:</p>
+<p><span class="math display">r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\text{old}}}(a_t \mid s_t)}</span></p>
+<p>This quantity compares how likely the current policy <span class="math inline">\pi_\theta</span> is to select action <span class="math inline">a_t</span> in state <span class="math inline">s_t</span> relative to the policy <span class="math inline">\pi_{\theta_{\text{old}}}</span> that originally generated the data. In effect, the ratio serves as an importance sampling correction. Since the trajectories were collected under an older policy, the ratio adjusts the learning signal so that updates remain valid for the current policy parameters.</p>
+<p>If we multiply this ratio by an advantage estimate <span class="math inline">\hat{A}_t</span>, we recover the conservative policy iteration objective:</p>
+<p><span class="math display">L^{CPI}(\theta) = \hat{\mathbb{E}}_t \left[ r_t(\theta) \hat{A}_t \right]</span></p>
+<p>This formulation appears in earlier policy gradient methods and can be interpreted as an off-policy correction for policy updates. However, maximizing this objective without additional constraints can lead to unstable learning. When an action receives a large positive advantage estimate, gradient ascent will aggressively increase its probability, potentially causing the policy to change too drastically in a single update.</p>
+</section>
+<section id="the-clipped-surrogate-objective" class="level3" data-number="1.2">
+<h3 data-number="1.2" class="anchored" data-anchor-id="the-clipped-surrogate-objective"><span class="header-section-number">1.2</span> The Clipped Surrogate Objective</h3>
+<p>Earlier work addressed this instability using trust-region constraints, most notably in Trust Region Policy Optimization (TRPO). PPO takes a different approach. Instead of explicitly enforcing a KL-divergence constraint, it introduces a clipped surrogate objective that restricts how far the probability ratio can deviate from 1.</p>
+<p>A small hyperparameter <span class="math inline">\epsilon</span>, typically set to 0.2, defines the allowable update region. The ratio is effectively constrained by the interval <span class="math inline">[1-\epsilon, 1+\epsilon]</span>.</p>
+<p>This leads to the PPO surrogate objective:</p>
+<p><span class="math display">L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) \right]</span></p>
+<p>The key design choice is the minimum operator between the unclipped objective and the clipped version. This creates a pessimistic bound: the algorithm always chooses the smaller of the two values. As a result, the optimization process avoids updates that would excessively increase the policy ratio beyond the safe region.</p>
+</section>
+<section id="asymmetric-stabilization" class="level3" data-number="1.3">
+<h3 data-number="1.3" class="anchored" data-anchor-id="asymmetric-stabilization"><span class="header-section-number">1.3</span> Asymmetric Stabilization</h3>
+<p>The effect becomes clearer when considering the behavior based on the advantage sign.</p>
+<p>If the advantage is positive, the update encourages the policy to increase the probability of the chosen action. As the probability ratio approaches <span class="math inline">1+\epsilon</span>, the clipped objective stops increasing. Beyond this point, further increases in probability no longer improve the objective, effectively preventing overly large updates.</p>
+<p>If the advantage is negative, the policy should reduce the probability of the action. When the ratio drops below <span class="math inline">1-\epsilon</span>, the clipped objective again flattens, limiting further decreases.</p>
+<p>An important property of this construction is its asymmetry. The clipping mechanism suppresses updates that would make the objective appear artificially better, while still allowing updates that reduce the objective when the policy change would be harmful. In practice, this acts as a stabilizing mechanism that discourages overly optimistic policy updates while still permitting corrective adjustments. Through this modification, PPO approximates the stabilizing behavior of trust-region methods without requiring second-order optimization or explicit KL constraints.</p>
+</section>
+</section>
+<section id="generalized-advantage-estimation" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="generalized-advantage-estimation"><span class="header-section-number">2</span> Generalized Advantage Estimation</h2>
+<p>The core quantity driving the policy update in Proximal Policy Optimization is the advantage estimate, denoted by <span class="math inline">\hat{A}_t</span>. This quantity serves as the signal that evaluates whether a chosen action performed better or worse than expected. In theory, the advantage function is defined as the difference between the action-value function and the state-value function,</p>
+<p><span class="math display">A^\pi(s_t, a_t) = Q^\pi(s_t, a_t) - V^\pi(s_t)</span></p>
+<p>It measures how much better or worse action <span class="math inline">a_t</span> is, relative to the baseline value of state <span class="math inline">s_t</span>. Within PPO’s surrogate objective, this advantage estimate directly scales the probability ratio. If <span class="math inline">\hat{A}_t</span> is positive, the optimization process is encouraged to increase the probability of that action. If <span class="math inline">\hat{A}_t</span> is negative, the algorithm instead reduces its probability.</p>
+<p>In practice, PPO does not compute the exact theoretical advantage. Instead, it relies on Generalized Advantage Estimation (GAE), which provides a practical compromise between high-variance Monte Carlo returns and high-bias temporal-difference learning. The starting point of GAE is the one-step temporal-difference residual,</p>
+<p><span class="math display">\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)</span></p>
+<p>This term can be interpreted as the one-step Bellman error under the current value estimate. Rather than using only this single-step quantity, GAE constructs the advantage estimate as an exponentially weighted sum of future temporal-difference residuals. For a trajectory segment, this gives</p>
+<p><span class="math display">\hat{A}_t = \delta_t + (\gamma \lambda)\delta_{t+1} + (\gamma \lambda)^2 \delta_{t+2} + \cdots</span></p>
+<p>Equivalently,</p>
+<p><span class="math display">\hat{A}_t = \sum_{l=0}^{T-t-1} (\gamma \lambda)^l \delta_{t+l}</span></p>
+<p>The parameter <span class="math inline">\lambda \in [0,1]</span> controls the bias-variance tradeoff. When <span class="math inline">\lambda</span> is close to 1, the estimator behaves more like a Monte Carlo return: it has lower bias but higher variance. When <span class="math inline">\lambda</span> is smaller, the estimate relies more heavily on the learned value function, which reduces variance at the cost of introducing additional bias. In this way, GAE provides a flexible mechanism for stabilizing policy gradient training.</p>
+<p>The quality of these advantage estimates depends critically on the accuracy of the value function. For this reason, PPO trains a value network, or critic, alongside the policy. The critic is optimized through a squared-error objective of the form</p>
+<p><span class="math display">L_t^{VF}(\theta) = \left( V_\theta(s_t) - V_t^{\mathrm{targ}} \right)^2</span></p>
+<p>Here, <span class="math inline">V_t^{\mathrm{targ}}</span> denotes a target return constructed from observed rewards, typically using discounted returns or a bootstrapped target. Minimizing this loss improves the critic’s estimate of expected future return from each state.</p>
+<p>This value learning component is not merely auxiliary. As the critic becomes more accurate, the baseline <span class="math inline">V(s_t)</span> becomes more reliable, which in turn produces cleaner temporal-difference residuals <span class="math inline">\delta_t</span>. Those improved residuals yield more accurate advantage estimates <span class="math inline">\hat{A}_t</span>, and those more accurate advantages provide a better learning signal for the actor. PPO therefore operates through a tightly coupled interaction between policy improvement and value estimation: the critic stabilizes the gradient signal, and the actor uses that signal to improve the policy. The result is a learning process in which value estimation and policy optimization reinforce one another throughout training.</p>
+<section id="from-td-residuals-to-the-gae-estimator" class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="from-td-residuals-to-the-gae-estimator"><span class="header-section-number">2.1</span> From TD Residuals to the GAE Estimator</h3>
+<p>The clipped surrogate objective in PPO determines how aggressively the policy is allowed to change, but that objective is only as reliable as the advantage estimates that feed into it. To understand why PPO remains stable in practice, we therefore need to examine how those advantages are constructed.</p>
+<p>We begin with the theoretical definition of the advantage function. Under a policy <span class="math inline">\pi</span>, the advantage of taking action <span class="math inline">a_t</span> in state <span class="math inline">s_t</span> is</p>
+<p><span class="math display">
+A^\pi(s_t, a_t) = Q^\pi(s_t, a_t) - V^\pi(s_t).
+</span></p>
+<p>This quantity measures how much better or worse an action is relative to the baseline value of the current state. In practice, however, the action-value function <span class="math inline">Q^\pi(s_t, a_t)</span> is not directly available and must be estimated from sampled trajectories.</p>
+<p>A natural way to approximate it is through a family of <span class="math inline">k</span>-step empirical returns. The one-step return is</p>
+<p><span class="math display">
+R_t^{(1)} = r_t + \gamma V(s_{t+1}),
+</span></p>
+<p>the two-step return is</p>
+<p><span class="math display">
+R_t^{(2)} = r_t + \gamma r_{t+1} + \gamma^2 V(s_{t+2}),
+</span></p>
+<p>and the general <span class="math inline">k</span>-step return is</p>
+<p><span class="math display">
+R_t^{(k)} = \sum_{l=0}^{k-1} \gamma^l r_{t+l} + \gamma^k V(s_{t+k}).
+</span></p>
+<p>Subtracting the baseline <span class="math inline">V(s_t)</span> from each return gives a corresponding sequence of <span class="math inline">k</span>-step advantage estimators.</p>
+<p>For the one-step case, we obtain</p>
+<p><span class="math display">
+\hat{A}_t^{(1)} = R_t^{(1)} - V(s_t)
+= r_t + \gamma V(s_{t+1}) - V(s_t).
+</span></p>
+<p>This is exactly the one-step temporal-difference residual,</p>
+<p><span class="math display">
+\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t).
+</span></p>
+<p>Thus,</p>
+<p><span class="math display">
+\hat{A}_t^{(1)} = \delta_t.
+</span></p>
+<p>For the two-step case, the estimator becomes</p>
+<p><span class="math display">
+\hat{A}_t^{(2)} = R_t^{(2)} - V(s_t)
+= r_t + \gamma r_{t+1} + \gamma^2 V(s_{t+2}) - V(s_t).
+</span></p>
+<p>By adding and subtracting the intermediate term <span class="math inline">\gamma V(s_{t+1})</span>, this can be rearranged as</p>
+<p><span class="math display">
+\hat{A}_t^{(2)}
+= \bigl(r_t + \gamma V(s_{t+1}) - V(s_t)\bigr)
++ \gamma \bigl(r_{t+1} + \gamma V(s_{t+2}) - V(s_{t+1})\bigr),
+</span></p>
+<p>which simplifies to</p>
+<p><span class="math display">
+\hat{A}_t^{(2)} = \delta_t + \gamma \delta_{t+1}.
+</span></p>
+<p>The same pattern extends to longer horizons. In general, the <span class="math inline">k</span>-step estimator can be written as</p>
+<p><span class="math display">
+\hat{A}_t^{(k)} = \sum_{l=0}^{k-1} \gamma^l \delta_{t+l}.
+</span></p>
+<p>This expression reveals an important structural fact: multi-step advantage estimation is built entirely from discounted sums of TD residuals. As the horizon <span class="math inline">k</span> increases, the estimator depends on more realized rewards and less on immediate bootstrapping. This tends to reduce bias, but it also increases variance because more stochasticity from the trajectory is accumulated.</p>
+<p>Generalized Advantage Estimation addresses this tradeoff by taking an exponentially weighted average over all <span class="math inline">k</span>-step estimators. With a decay parameter <span class="math inline">\lambda \in [0,1]</span>, GAE is defined as</p>
+<p><span class="math display">
+\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)}
+= (1-\lambda)\sum_{k=1}^{\infty}\lambda^{k-1}\hat{A}_t^{(k)}.
+</span></p>
+<p>Substituting the <span class="math inline">k</span>-step estimators into this expression yields</p>
+<p><span class="math display">
+\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)}
+= (1-\lambda)\left(
+\hat{A}_t^{(1)} + \lambda \hat{A}_t^{(2)} + \lambda^2 \hat{A}_t^{(3)} + \cdots
+\right).
+</span></p>
+<p>Expanding each term in TD residual form gives</p>
+<p><span class="math display">
+\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)}
+= (1-\lambda)\left(
+\delta_t
++ \lambda(\delta_t + \gamma \delta_{t+1})
++ \lambda^2(\delta_t + \gamma \delta_{t+1} + \gamma^2 \delta_{t+2})
++ \cdots
+\right).
+</span></p>
+<p>We then collect coefficients of each residual <span class="math inline">\delta_{t+l}</span>. For a fixed <span class="math inline">l</span>, its coefficient is</p>
+<p><span class="math display">
+(1-\lambda)\left(
+\lambda^l \gamma^l + \lambda^{l+1}\gamma^l + \lambda^{l+2}\gamma^l + \cdots
+\right).
+</span></p>
+<p>Factoring out <span class="math inline">(\gamma\lambda)^l</span> gives</p>
+<p><span class="math display">
+(1-\lambda)(\gamma\lambda)^l(1 + \lambda + \lambda^2 + \cdots).
+</span></p>
+<p>Using the geometric series identity</p>
+<p><span class="math display">
+1 + \lambda + \lambda^2 + \cdots = \frac{1}{1-\lambda},
+\qquad \text{for } 0 \le \lambda &lt; 1,
+</span></p>
+<p>the <span class="math inline">(1-\lambda)</span> term cancels, leaving</p>
+<p><span class="math display">
+(\gamma\lambda)^l
+</span></p>
+<p>as the coefficient on <span class="math inline">\delta_{t+l}</span>. Therefore, GAE simplifies to the compact form</p>
+<p><span class="math display">
+\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)}
+= \sum_{l=0}^{\infty} (\gamma\lambda)^l \delta_{t+l}.
+</span></p>
+<p>In practice, PPO does not operate on infinite trajectories. Instead, it collects trajectory segments of finite length <span class="math inline">T</span>, so the estimator is truncated at the end of the rollout:</p>
+<p><span class="math display">
+\hat{A}_t = \sum_{l=0}^{T-t-1} (\gamma\lambda)^l \delta_{t+l}.
+</span></p>
+<p>This final expression makes clear that GAE is not a separate idea from temporal-difference learning, but rather a structured generalization of it. The one-step TD residual remains the atomic unit, while <span class="math inline">\lambda</span> controls how far future residuals are allowed to influence the estimate. When <span class="math inline">\lambda</span> is small, the estimator stays close to low-variance bootstrapping; when <span class="math inline">\lambda</span> approaches 1, it moves toward longer-horizon returns with lower bias but higher variance.</p>
+<p>This derivation also clarifies why GAE is so important for PPO. The clipped surrogate objective does not operate directly on rewards; it operates on advantage estimates. If those estimates are excessively noisy, the probability ratio may be pushed in unstable directions even when clipping is present. GAE provides a smoother and more reliable policy gradient signal, making it possible for PPO to reuse the same batch over multiple optimization epochs without immediately overreacting to high-variance returns. In this sense, the clipped objective constrains how far the policy may move, while GAE improves the quality of the signal telling it which direction to move.</p>
+</section>
+</section>
+<section id="ppo-training-pipeline" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="ppo-training-pipeline"><span class="header-section-number">3</span> PPO Training Pipeline</h2>
+<p>Having derived Generalized Advantage Estimation, we now have the advantage signal that PPO uses to guide policy improvement. These estimates enter directly into the clipped surrogate objective and provide a practical balance between bias and variance during optimization. We are therefore ready to move from the construction of the learning signal to the structure of the algorithm itself. The next section examines the PPO training pipeline, where policy loss, value regression, and entropy regularization are combined within an iterative rollout-and-update procedure.</p>
+<section id="the-full-ppo-objective" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="the-full-ppo-objective"><span class="header-section-number">3.1</span> The Full PPO Objective</h3>
+<p>In architectures where the policy and value function share neural network parameters, training must optimize both components through a single composite objective. This shared representation creates an important design constraint: the network must learn features that are simultaneously useful for action selection and for estimating future returns. PPO addresses this by combining three distinct terms into one objective function.</p>
+<p>The full objective is written as</p>
+<p><span class="math display">
+L_t^{CLIP+VF+S}(\theta)
+=
+\hat{\mathbb{E}}_t
+\left[
+L_t^{CLIP}(\theta)
+- c_1 L_t^{VF}(\theta)
++ c_2 S[\pi_\theta](s_t)
+\right].
+</span></p>
+<p>The first term, <span class="math inline">L_t^{CLIP}(\theta)</span>, is the clipped surrogate objective. This is the core policy optimization term. Using the advantage estimates produced by GAE, it increases the probability of actions that performed better than expected and decreases the probability of actions that performed worse than expected. At the same time, the clipping mechanism limits how far the policy is allowed to move in a single update, thereby preventing the unstable jumps that can arise in unconstrained policy gradient methods.</p>
+<p>The second term, <span class="math inline">L_t^{VF}(\theta)</span>, is the value function loss. Reliable policy updates depend on reliable advantage estimates, and reliable advantage estimates in turn depend on an accurate value baseline. For this reason, PPO trains the critic alongside the actor using a squared-error objective of the form</p>
+<p><span class="math display">
+L_t^{VF}(\theta)
+=
+\left(
+V_\theta(s_t) - V_t^{\mathrm{targ}}
+\right)^2.
+</span></p>
+<p>Here, <span class="math inline">V_t^{\mathrm{targ}}</span> is a target return constructed from the observed trajectory. Because PPO is written as a maximization objective, the value loss appears with a negative sign. Maximizing the overall objective therefore corresponds to minimizing the critic’s prediction error while simultaneously improving the policy.</p>
+<p>The third term, <span class="math inline">S[\pi_\theta](s_t)</span>, is an entropy bonus. Entropy measures the uncertainty, or spread, of the policy’s action distribution. Including this term encourages the policy to remain sufficiently stochastic during training rather than collapsing too early to a narrow or deterministic strategy. This plays an important regularizing role: without an entropy bonus, the policy may prematurely overcommit to actions that happened to receive favorable advantage estimates early in training, reducing exploration and potentially trapping learning in a suboptimal regime.</p>
+<p>Taken together, these three components define the optimization structure of PPO. The clipped policy term drives improvement, the value loss stabilizes the advantage estimates that guide that improvement, and the entropy bonus preserves exploration while training remains underway. When the actor and critic share parameters, this unified objective also allows all gradients to be propagated through the shared network in a single backward pass. As a result, the lower layers learn state representations that are shaped simultaneously by policy improvement, value estimation, and exploration pressure.</p>
+<p>The coefficients <span class="math inline">c_1</span> and <span class="math inline">c_2</span> determine the relative influence of the value loss and entropy bonus. In practice, these hyperparameters are essential: if the critic term is weighted too heavily, value fitting can dominate policy learning, while an excessively large entropy coefficient can prevent the policy from becoming sufficiently decisive. PPO therefore depends not only on clipping, but also on a careful balance among these three gradient signals.</p>
+</section>
+<section id="rollout-buffer-vs.-replay-buffer" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="rollout-buffer-vs.-replay-buffer"><span class="header-section-number">3.2</span> Rollout Buffer vs.&nbsp;Replay Buffer</h3>
+<p>To understand why Proximal Policy Optimization does not rely on a traditional replay buffer, it is necessary to contrast its mathematical structure with that of explicitly off-policy algorithms. In methods such as Deep Q-Networks (DQN) and Soft Actor-Critic (SAC), the agent maintains a large and persistent buffer of past interactions. Because these methods are derived from Bellman-style updates that target optimal future behavior rather than the precise behavior policy that generated the data, they can safely reuse trajectories collected many iterations earlier.</p>
+<p>PPO operates under a different regime. Its update is built around the probability ratio</p>
+<p><span class="math display">
+r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\mathrm{old}}}(a_t \mid s_t)},
+</span></p>
+<p>which corrects for the mismatch between the current policy and the policy that generated the sampled trajectories. This is an importance-sampling correction, but it is only reliable when the two policies remain close. PPO’s clipped objective explicitly enforces this locality by constraining the effective update region to ratios near 1, typically within the interval</p>
+<p><span class="math display">
+[1-\epsilon,\, 1+\epsilon].
+</span></p>
+<p>This immediately limits how off-policy the training data can be. If PPO were to draw trajectories from a permanent replay buffer containing samples generated many policy iterations earlier, the divergence between <span class="math inline">\pi_\theta</span> and <span class="math inline">\pi_{\theta_{\mathrm{old}}}</span> could become very large. In that case, the probability ratio would frequently fall far outside the clipping interval, and the clipped surrogate objective would saturate on a large fraction of the data. Once this happens, the gradient signal becomes weak or uninformative, and optimization becomes ineffective. PPO can therefore tolerate only modest policy drift between data collection and update. Its data is not fully on-policy in a strict mathematical sense, since multiple epochs are performed on the same batch, but it is only mildly off-policy within a tightly controlled window.</p>
+<p>This theoretical constraint determines the engineering design of PPO. Instead of a persistent replay buffer, PPO uses a transient rollout buffer whose contents are valid only for a short optimization cycle. As described in the original algorithm, training proceeds through an alternating loop of rollout collection, advantage computation, and limited reuse.</p>
+<p>The process begins with parallel data collection. A set of <span class="math inline">N</span> actors runs the current policy in the environment for <span class="math inline">T</span> timesteps each, producing a batch of <span class="math inline">NT</span> transitions. These transitions contain states, actions, rewards, old action probabilities, and value predictions under the current policy at the time of sampling.</p>
+<p>Once this rollout has been collected, interaction with the environment pauses and the algorithm computes training targets. Using the sampled rewards together with the critic’s value estimates, PPO computes temporal-difference residuals and then applies Generalized Advantage Estimation to obtain the advantage estimates <span class="math inline">\hat{A}_t</span>. At the same time, target values <span class="math inline">V_t^{\mathrm{targ}}</span> are formed for critic regression.</p>
+<p>The algorithm then enters the optimization phase. The collected batch is shuffled, divided into minibatches, and reused for <span class="math inline">K</span> epochs of stochastic gradient optimization. During this stage, PPO maximizes the composite objective consisting of the clipped policy term, the value function term, and the entropy bonus. The key point is that the batch may be reused several times, but only for a limited number of epochs. This limited reuse is precisely what PPO’s importance-sampling correction can tolerate: enough to improve sample efficiency, but not enough to let the current policy drift arbitrarily far from the sampling policy.</p>
+<p>After these <span class="math inline">K</span> epochs, the rollout buffer is discarded. The current parameters become the new reference policy for the next iteration, and a fresh batch of trajectories must be collected from the environment. In this sense, PPO follows a short-horizon data lifecycle: collect, estimate, optimize, discard, and recollect.</p>
+<p>This design is sometimes described as a compromise between strictly on-policy and fully off-policy reinforcement learning. PPO improves upon vanilla on-policy methods by extracting multiple gradient steps from each batch, but it stops far short of the replay-based regime used by DQN or SAC. The clipped objective makes this compromise possible, but it also imposes its central limitation: data may be reused only while it still reflects a policy close to the current one. For that reason, PPO does not maintain a replay buffer in the conventional sense. Its rollout buffer is intentionally ephemeral, because the usefulness of the data decays as soon as the policy moves too far from the one that generated it.</p>
+</section>
+</section>
+<section id="ppo-and-the-computational-cost-of-rlhf" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="ppo-and-the-computational-cost-of-rlhf"><span class="header-section-number">4</span> PPO and the Computational Cost of RLHF</h2>
+<p>The main bottleneck in applying reinforcement learning to large language models is very different from the bottleneck in classical control problems. In simulated robotics or game environments, collecting trajectories is usually relatively cheap. The environment can be stepped forward quickly, and the main cost often lies in optimization. In language modeling, however, the rollout process is the generation process itself. Producing a response requires autoregressive decoding, where tokens are generated one by one through repeated forward passes of a large transformer. For modern language models, this is expensive in both latency and hardware utilization.</p>
+<p>This difference has an important consequence for RLHF. In a strictly on-policy method, each batch of generated samples would be used once for a single gradient update and then discarded. That would make training highly inefficient, since most of the wall-clock time would be spent generating new text rather than improving the model from existing data. In other words, the cost of sampling would dominate the cost of learning.</p>
+<p>PPO helps with this problem because it allows limited sample reuse. By using the probability ratio <span class="math inline">r_t(\theta)</span> together with the clipped surrogate objective, PPO can perform several optimization epochs on the same batch of generated sequences, as long as the policy does not move too far from the one that produced the data. The hyperparameter <span class="math inline">K</span> controls how many passes are made over the rollout batch before a new batch must be generated.</p>
+<p>This changes the training cost structure in an important way. Instead of paying the full cost of autoregressive generation for every gradient step, PPO spreads that cost across multiple updates. During these optimization epochs, the model still has to recompute log-probabilities under the current policy in order to evaluate <span class="math inline">r_t(\theta)</span>. But because the token sequences are already fixed in the rollout buffer, these computations no longer require sequential sampling. They can be evaluated in parallel over the full sequence with causal masking, which is much cheaper than generating tokens one at a time.</p>
+<p>For this reason, PPO is not only a stable policy optimization method in theory. In RLHF, it is also a practical way to make reinforcement learning feasible for large language models. The clipped objective does more than stabilize updates: it also makes limited sample reuse possible, which significantly reduces the cost of training.</p>
+</section>
+<section id="beyond-ppo" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="beyond-ppo"><span class="header-section-number">5</span> Beyond PPO</h2>
+<p>Although PPO reduces the cost of alignment by reusing samples across several optimization epochs, it still depends on an expensive online training loop. In large language model alignment, PPO often requires several model components to remain active during training, including the current policy, a value function, a reference model, and a reward model. Each iteration also requires a fresh rollout buffer built through autoregressive generation. As models continue to grow, both the memory requirements of this setup and the latency of live sampling become increasingly difficult to manage.</p>
+<p>This is the context in which methods such as Direct Preference Optimization (DPO) <span class="citation" data-cites="rafailovDirectPreferenceOptimization2024">(<a href="#ref-rafailovDirectPreferenceOptimization2024" role="doc-biblioref">Rafailov et al. 2024</a>)</span> emerged. Instead of treating alignment as an online reinforcement learning problem, DPO reformulates it as direct optimization on static preference data. In standard RLHF, the objective is usually written as reward maximization regularized by a KL constraint that keeps the policy close to a reference model. DPO shows that, under a preference model such as Bradley-Terry, this optimization problem can be rewritten so that the reward is represented implicitly through the policy and reference log-probabilities:</p>
+<p><span class="math display">
+r(x,y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}.
+</span></p>
+<p>This removes the need to train a separate reward model and avoids the full PPO pipeline of online sampling, reward fitting, value estimation, and policy optimization. Instead, the policy is trained directly on chosen-versus-rejected response pairs, with the objective encouraging higher relative probability on preferred outputs.</p>
+<p>Kahneman-Tversky Optimization (KTO) <span class="citation" data-cites="ethayarajhKTOModelAlignment2024">(<a href="#ref-ethayarajhKTOModelAlignment2024" role="doc-biblioref">Ethayarajh et al. 2024</a>)</span> pushes this simplification further by relaxing the paired-data requirement used in DPO. DPO assumes that, for each prompt, one has both a preferred and a dispreferred response. KTO instead works with unpaired binary feedback, where a sample is labeled only as desirable or undesirable. This makes the method easier to apply when full preference pairs are difficult to collect or curate. Like DPO, KTO avoids online rollout generation and operates directly on a fixed dataset with a deterministic objective.</p>
+<p>DPO and KTO are part of a broader move toward simpler preference-based alignment objectives. IPO, or Identity Preference Optimization <span class="citation" data-cites="azarGeneralTheoreticalParadigm2023">(<a href="#ref-azarGeneralTheoreticalParadigm2023" role="doc-biblioref">Azar et al. 2023</a>)</span>, revisits the DPO-style formulation and modifies the objective in a way intended to improve optimization behavior. ORPO, or Odds Ratio Preference Optimization <span class="citation" data-cites="hongORPOMonolithicPreference2024">(<a href="#ref-hongORPOMonolithicPreference2024" role="doc-biblioref">Hong, Lee, and Thorne 2024</a>)</span>, combines supervised fine-tuning and preference optimization into a single stage, which makes the training pipeline simpler. SimPO, or Simple Preference Optimization <span class="citation" data-cites="mengSimPOSimplePreference2024">(<a href="#ref-mengSimPOSimplePreference2024" role="doc-biblioref">Meng, Xia, and Chen 2024</a>)</span>, further reduces the dependence on an explicit reference model while keeping the basic preference-learning structure. More recently, GRPO, or Group Relative Policy Optimization <span class="citation" data-cites="shaoDeepSeekMathPushingLimits2024">(<a href="#ref-shaoDeepSeekMathPushingLimits2024" role="doc-biblioref">Shao et al. 2024</a>)</span>, has attracted attention in settings where relative comparisons across multiple candidates are more natural than scalar reward modeling, especially in reasoning-focused training.</p>
+<p>These methods are better understood not as rejections of PPO, but as simpler reformulations of the same alignment goal. All of them aim to move the model distribution toward outputs preferred by humans while limiting excessive drift from a reference behavior. The main difference is procedural. PPO approaches this through online reinforcement learning with controlled policy updates. DPO, KTO, IPO, ORPO, SimPO, and related methods instead replace much of that machinery with offline or more direct objectives defined on preference data.</p>
+<p>As alignment workloads scale to larger models, these methods become increasingly attractive because they preserve the core preference-learning structure of RLHF while avoiding much of the overhead associated with live sampling, critic training, and reward-model optimization. In that sense, they extend the same line of work: not by rejecting PPO, but by asking whether a similar alignment objective can be reached with a cheaper and simpler training procedure.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-azarGeneralTheoreticalParadigm2023" class="csl-entry" role="listitem">
+Azar, Mohammad Gheshlaghi, Mark Rowland, Bilal Piot, Daniel Guo, Daniele Calandriello, Michal Valko, and Rémi Munos. 2023. <span>“A <span>General Theoretical Paradigm</span> to <span>Understand Learning</span> from <span>Human Preferences</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2310.12036">https://arxiv.org/abs/2310.12036</a>.
+</div>
+<div id="ref-ethayarajhKTOModelAlignment2024" class="csl-entry" role="listitem">
+Ethayarajh, Kawin, Winnie Xu, Niklas Muennighoff, Dan Jurafsky, and Douwe Kiela. 2024. <span>“<span>KTO</span>: <span>Model Alignment</span> as <span>Prospect Theoretic Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2402.01306">https://arxiv.org/abs/2402.01306</a>.
+</div>
+<div id="ref-hongORPOMonolithicPreference2024" class="csl-entry" role="listitem">
+Hong, Jiwoo, Noah Lee, and James Thorne. 2024. <span>“<span>ORPO</span>: <span>Monolithic Preference Optimization</span> Without <span>Reference Model</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2403.07691">https://arxiv.org/abs/2403.07691</a>.
+</div>
+<div id="ref-mengSimPOSimplePreference2024" class="csl-entry" role="listitem">
+Meng, Yu, Mengzhou Xia, and Danqi Chen. 2024. <span>“<span>SimPO</span>: <span>Simple Preference Optimization</span> with a <span>Reference-Free Reward</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2405.14734">https://arxiv.org/abs/2405.14734</a>.
+</div>
+<div id="ref-rafailovDirectPreferenceOptimization2024" class="csl-entry" role="listitem">
+Rafailov, Rafael, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. 2024. <span>“Direct <span>Preference Optimization</span>: <span>Your Language Model</span> Is <span>Secretly</span> a <span>Reward Model</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a>.
+</div>
+<div id="ref-schulmanTrustRegionPolicy2017" class="csl-entry" role="listitem">
+Schulman, John, Sergey Levine, Philipp Moritz, Michael I. Jordan, and Pieter Abbeel. 2017. <span>“Trust <span>Region Policy Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1502.05477">https://arxiv.org/abs/1502.05477</a>.
+</div>
+<div id="ref-schulmanProximalPolicyOptimization2017" class="csl-entry" role="listitem">
+Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. <span>“Proximal <span>Policy Optimization Algorithms</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1707.06347">https://arxiv.org/abs/1707.06347</a>.
+</div>
+<div id="ref-shaoDeepSeekMathPushingLimits2024" class="csl-entry" role="listitem">
+Shao, Zhihong, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, et al. 2024. <span>“<span>DeepSeekMath</span>: <span>Pushing</span> the <span>Limits</span> of <span>Mathematical Reasoning</span> in <span>Open Language Models</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2402.03300">https://arxiv.org/abs/2402.03300</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
