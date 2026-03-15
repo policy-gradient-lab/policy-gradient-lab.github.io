@@ -4,9 +4,9 @@
     "items": [
       "/posts/2026/agentic-ai-series-swe-bench/index.html",
       "/posts/2026/agentic-ai-series-swe-agent/index.html",
-      "/posts/2026/llm-alignment-series-3-ppo/index.html",
-      "/posts/2026/llm-alignment-series-2-trpo/index.html",
-      "/posts/2026/llm-alignment-series-1-policy-gradient-theorem/index.html",
+      "/posts/2026/llm-alignment-series-ppo/index.html",
+      "/posts/2026/llm-alignment-series-trpo/index.html",
+      "/posts/2026/llm-alignment-series-policy-gradient-theorem/index.html",
       "/posts/2026/openclaw-architecture/index.html"
     ]
   }

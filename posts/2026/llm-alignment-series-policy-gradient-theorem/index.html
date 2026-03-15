@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-02-28">
 
-<title>LLM Alignment Series 1: The Policy Gradient Theorem – Policy Gradient Lab</title>
+<title>LLM Alignment Series: The Policy Gradient Theorem – Policy Gradient Lab</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -165,7 +165,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">LLM Alignment Series 1: The Policy Gradient Theorem</h1>
+<h1 class="title">LLM Alignment Series: The Policy Gradient Theorem</h1>
 </div>
 
 
@@ -412,7 +412,7 @@ window.Quarto = {
 <section id="conclusion" class="level2" data-number="5">
 <h2 data-number="5" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">5</span> Conclusion</h2>
 <p>The policy gradient theorem establishes that <span class="math inline">\nabla_\theta J(\theta)</span> can be computed without explicitly deriving the gradient of the state distribution <span class="math inline">\nabla_\theta \mu_{\pi_\theta}</span>. While it is true that <span class="math inline">\mu_\pi(s)</span> is coupled with the policy <span class="math inline">\pi</span> and shifts whenever <span class="math inline">\theta</span> is updated, the theorem demonstrates that these complex environmental dependencies are absorbed into the expectation over the discounted state visitation distribution. This allows the objective <span class="math inline">J(\theta)</span> to be optimized using only the local policy gradient <span class="math inline">\nabla_\theta \log \pi_\theta(a|s)</span> and the advantage, effectively side-stepping the need to model unknown transition dynamics.</p>
-<p>However, this shortcut only holds true for the exact gradient at the current <span class="math inline">\theta</span>; as soon as the policy moves too far, the old distribution <span class="math inline">\mu_{\pi_{old}}(s)</span> no longer matches the new reality, causing the gradient estimate to become unreliable. Understanding this limitation naturally leads to the next question: how can we update policies while ensuring the new policy does not drift too far from the old one? This question motivates Trust Region Policy Optimization (TRPO), which we explore in the next post: <a href="../../../posts/2026/llm-alignment-series-2-trpo/">LLM Alignment Series 2: Trust Region Policy Optimization</a>.</p>
+<p>However, this shortcut only holds true for the exact gradient at the current <span class="math inline">\theta</span>; as soon as the policy moves too far, the old distribution <span class="math inline">\mu_{\pi_{old}}(s)</span> no longer matches the new reality, causing the gradient estimate to become unreliable. Understanding this limitation naturally leads to the next question: how can we update policies while ensuring the new policy does not drift too far from the old one? This question motivates Trust Region Policy Optimization (TRPO), which we explore in the next post: <a href="../../../posts/2026/llm-alignment-series-trpo/">LLM Alignment Series: Trust Region Policy Optimization</a>.</p>
 
 
 

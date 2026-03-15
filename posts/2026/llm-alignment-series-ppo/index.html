@@ -8,7 +8,7 @@
 
 <meta name="dcterms.date" content="2026-03-08">
 
-<title>LLM Alignment Series 3: Proximal Policy Optimization – Policy Gradient Lab</title>
+<title>LLM Alignment Series: Proximal Policy Optimization – Policy Gradient Lab</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -165,7 +165,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">LLM Alignment Series 3: Proximal Policy Optimization</h1>
+<h1 class="title">LLM Alignment Series: Proximal Policy Optimization</h1>
 </div>
 
 
@@ -211,7 +211,7 @@ window.Quarto = {
   </ul>
 </nav>
 <p>When Proximal Policy Optimization (PPO) was introduced in 2017, much of deep reinforcement learning was focused on high-dimensional control problems. The original PPO paper <span class="citation" data-cites="schulmanProximalPolicyOptimization2017">(<a href="#ref-schulmanProximalPolicyOptimization2017" role="doc-biblioref">Schulman, Wolski, et al. 2017</a>)</span> evaluated the method on benchmark tasks that included continuous control in MuJoCo and discrete environments such as Atari. At the time, reinforcement learning was shaped mainly by deep Q-learning, vanilla policy gradient methods, and trust region policy optimization (TRPO) <span class="citation" data-cites="schulmanTrustRegionPolicy2017">(<a href="#ref-schulmanTrustRegionPolicy2017" role="doc-biblioref">Schulman, Levine, et al. 2017</a>)</span>. These methods had already shown strong results, but they also revealed a practical gap: the field still lacked a policy optimization method that was stable, sample-efficient, and easy to train with standard neural network pipelines.</p>
-<p>PPO was introduced as a practical answer to that problem. It kept the central motivation behind TRPO (see my previous post <a href="../../../posts/2026/llm-alignment-series-2-trpo/">LLM Alignment Series 2: Trust Region Policy Optimization</a>), namely controlling the size of policy updates, but replaced TRPO’s more complicated constrained optimization procedure with a simpler objective that could be optimized using ordinary first-order methods. In the original experiments, PPO performed well on robotic locomotion tasks, where simulated humanoids learned to run, steer, and recover from perturbations. These results showed that the method could handle continuous action spaces and fairly complex dynamics without sacrificing training stability.</p>
+<p>PPO was introduced as a practical answer to that problem. It kept the central motivation behind TRPO (see my previous post <a href="../../../posts/2026/llm-alignment-series-trpo/">LLM Alignment Series: Trust Region Policy Optimization</a>), namely controlling the size of policy updates, but replaced TRPO’s more complicated constrained optimization procedure with a simpler objective that could be optimized using ordinary first-order methods. In the original experiments, PPO performed well on robotic locomotion tasks, where simulated humanoids learned to run, steer, and recover from perturbations. These results showed that the method could handle continuous action spaces and fairly complex dynamics without sacrificing training stability.</p>
 <p>The same design choices that made PPO effective in robotic control later made it useful for large-scale language model alignment. TRPO offered stronger theoretical machinery, but in practice it depended on second-order approximations and conjugate gradient steps that were awkward to incorporate into standard deep learning workflows. PPO simplified this setup by introducing a clipped surrogate objective that serves as a practical approximation to trust-region-style updates while remaining fully compatible with first-order optimization. In PPO, training alternates between collecting data and performing several epochs of stochastic gradient updates on that same batch.</p>
 <p>When large transformer language models became the focus of alignment work, these properties made PPO a natural choice for reinforcement learning from human feedback. With models containing billions of parameters, second-order optimization is generally too expensive to be practical. At the same time, fine-tuning must remain stable enough to improve behavior without damaging the linguistic structure learned during pretraining. PPO offered a workable tradeoff: it constrained policy updates through clipping, allowed multiple updates on the same batch, and fit naturally into existing deep learning training systems. What began as a method for stabilizing reinforcement learning in simulated control environments later became one of the central optimization methods used in RLHF.</p>
 <section id="clipped-surrogate-objective" class="level2" data-number="1">
