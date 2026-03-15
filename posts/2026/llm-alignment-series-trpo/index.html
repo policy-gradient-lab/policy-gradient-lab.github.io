@@ -373,7 +373,7 @@ window.Quarto = {
 </section>
 <section id="from-natural-policy-gradient-to-trust-region-policy-optimization" class="level2" data-number="3">
 <h2 data-number="3" class="anchored" data-anchor-id="from-natural-policy-gradient-to-trust-region-policy-optimization"><span class="header-section-number">3</span> From Natural Policy Gradient to Trust Region Policy Optimization</h2>
-<p>Trust Region Policy Optimization (TRPO) is fundamentally an extension and practical stabilization of the Natural Policy Gradient (NPG) algorithm <span class="citation" data-cites="kakadeNaturalPolicyGradient2001a">(<a href="#ref-kakadeNaturalPolicyGradient2001a" role="doc-biblioref"><strong>kakadeNaturalPolicyGradient2001a?</strong></a>)</span>. While they share the exact same underlying philosophy regarding the geometry of probability space, TRPO solves a critical flaw in how NPG applies its updates.</p>
+<p>Trust Region Policy Optimization (TRPO) is fundamentally an extension and practical stabilization of the Natural Policy Gradient (NPG) algorithm <span class="citation" data-cites="kakadeNaturalPolicyGradient2001">(<a href="#ref-kakadeNaturalPolicyGradient2001" role="doc-biblioref">Kakade 2001</a>)</span>. While they share the exact same underlying philosophy regarding the geometry of probability space, TRPO solves a critical flaw in how NPG applies its updates.</p>
 <p>Both NPG and TRPO recognize that standard gradient descent is flawed for updating policies. Taking a step of a fixed Euclidean distance in parameter space can lead to wildly unpredictable changes in the actual probability distribution of the policy.</p>
 <p>To fix this, both algorithms calculate the exact same update direction. They multiply the standard policy gradient <span class="math inline">g</span> by the inverse of the Fisher Information Matrix <span class="math inline">F</span>:</p>
 <p><span class="math display">x = F^{-1} g</span></p>
@@ -469,6 +469,9 @@ window.Quarto = {
 </section>
 
 <div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-kakadeNaturalPolicyGradient2001" class="csl-entry" role="listitem">
+Kakade, Sham M. 2001. <span>“A <span>Natural Policy Gradient</span>.”</span> In <em>Advances in <span>Neural Information Processing Systems</span></em>. Vol. 14. MIT Press.
+</div>
 <div id="ref-schulmanTrustRegionPolicy2017" class="csl-entry" role="listitem">
 Schulman, John, Sergey Levine, Philipp Moritz, Michael I. Jordan, and Pieter Abbeel. 2017. <span>“Trust <span>Region Policy Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1502.05477">https://arxiv.org/abs/1502.05477</a>.
 </div>
