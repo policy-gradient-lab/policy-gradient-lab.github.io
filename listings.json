@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/2026/agentic-ai-series-swe-bench/index.html",
       "/posts/2026/agentic-ai-series-swe-agent/index.html",
       "/posts/2026/llm-alignment-series-3-ppo/index.html",
       "/posts/2026/llm-alignment-series-2-trpo/index.html",

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-03-15">
+
+<title>Agentic AI Series: SWE-bench – Policy Gradient Lab</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-93c8e7af82e4d696d10af310f1e9abe1.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="../../../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Agentic AI Series: SWE-bench</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 15, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#what-is-swe-bench" id="toc-what-is-swe-bench"><span class="header-section-number">2</span> What is SWE-bench</a></li>
+  <li><a href="#autonomous-coding-agents" id="toc-autonomous-coding-agents"><span class="header-section-number">3</span> Autonomous Coding Agents</a>
+  <ul>
+  <li><a href="#swe-agent" id="toc-swe-agent"><span class="header-section-number">3.1</span> SWE-agent</a></li>
+  <li><a href="#autonomous-coding-systems" id="toc-autonomous-coding-systems"><span class="header-section-number">3.2</span> Autonomous Coding Systems</a></li>
+  <li><a href="#agentic-software-engineering-workflows" id="toc-agentic-software-engineering-workflows"><span class="header-section-number">3.3</span> Agentic Software Engineering Workflows</a></li>
+  </ul></li>
+  <li><a href="#context-length-and-retrieval" id="toc-context-length-and-retrieval"><span class="header-section-number">4</span> Context Length and Retrieval</a>
+  <ul>
+  <li><a href="#context-length" id="toc-context-length"><span class="header-section-number">4.1</span> Context Length</a></li>
+  <li><a href="#distribution-shift" id="toc-distribution-shift"><span class="header-section-number">4.2</span> Distribution Shift</a></li>
+  </ul></li>
+  <li><a href="#research-implications" id="toc-research-implications"><span class="header-section-number">5</span> Research Implications</a>
+  <ul>
+  <li><a href="#repository-scale-code-understanding" id="toc-repository-scale-code-understanding"><span class="header-section-number">5.1</span> Repository-Scale Code Understanding</a></li>
+  <li><a href="#long-context-reasoning" id="toc-long-context-reasoning"><span class="header-section-number">5.2</span> Long-Context Reasoning</a></li>
+  <li><a href="#edit-localization" id="toc-edit-localization"><span class="header-section-number">5.3</span> Edit Localization</a></li>
+  <li><a href="#multi-file-patch-generation" id="toc-multi-file-patch-generation"><span class="header-section-number">5.4</span> Multi-File Patch Generation</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion"><span class="header-section-number">6</span> Conclusion</a></li>
+  </ul>
+</nav>
+<section id="introduction" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">1</span> Introduction</h2>
+<p>Most code benchmarks are too simplified to reflect real software engineering. They usually evaluate models on short, self-contained tasks such as function completion or small code generation problems. Real GitHub issues are different. Solving them often requires navigating a large repository, identifying the relevant files, understanding cross-file dependencies, modifying multiple functions, and validating the fix through tests.</p>
+<p>SWE-bench <span class="citation" data-cites="jimenezSWEbenchCanLanguage2024">(<a href="#ref-jimenezSWEbenchCanLanguage2024" role="doc-biblioref">Jimenez et al. 2024</a>)</span> was proposed to evaluate language models in this more realistic setting. Instead of asking whether a model can write a short snippet, it asks whether the model can resolve an actual GitHub issue. The setup is simple: given a repository snapshot and an issue description, the model must generate a patch, and the patch is judged by whether it makes the repository’s tests pass.</p>
+<p>The benchmark contains 2,294 task instances drawn from 12 popular Python repositories. Each instance is based on a real GitHub issue and its corresponding merged pull request. To build the dataset, the authors first collect issue-linked pull requests, then retain those that genuinely resolve the issue and modify tests, and finally apply execution-level filtering to ensure that at least one test changes from failing to passing. This design makes the benchmark both realistic and automatically verifiable.</p>
+<p>A central contribution of the paper is to show why this task is difficult. The issue descriptions are often long, the repositories are large, and the reference fixes frequently span multiple files. As a result, success on SWE-bench requires more than code generation. It also requires repository-level retrieval, long-context reasoning, cross-file understanding, patch generation, and execution-based verification.</p>
+<p>The paper also introduces an open baseline model, SWE-Llama, trained on roughly 19,000 issue–pull request pairs by supervised fine-tuning CodeLlama 7B and 13B. This provides a reproducible reference point for future work. However, the most striking result is that even the strongest models at the time performed very poorly. Under BM25 retrieval, Claude 2 solved only about 1.96% of the tasks, and even idealized retrieval improved performance only modestly. The conclusion is clear: automatically resolving real repository-level issues remains a difficult but important problem for language models.</p>
+</section>
+<section id="what-is-swe-bench" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="what-is-swe-bench"><span class="header-section-number">2</span> What is SWE-bench</h2>
+<p>SWE-bench is constructed through a three-stage pipeline designed to convert noisy GitHub activity into executable software engineering tasks. The benchmark begins with pull requests drawn from 12 popular Python repositories and progressively filters them until the remaining instances are both realistic and behaviorally verifiable. This process reduces roughly 90,000 pull requests to 2,294 benchmark tasks.</p>
+<p>We begin with repository selection. The dataset is derived from 12 popular open-source Python repositories, with emphasis on projects that are actively maintained, follow clearer contribution practices, and provide stronger test coverage. Each pull request is anchored to a base commit, which defines the exact pre-fix repository snapshot used later in evaluation. This stage establishes the realism of the benchmark at the repository level. Every task originates from an actual codebase, an actual development history, and a concrete issue-resolution workflow.</p>
+<p>The second stage applies attribute-based filtering. A pull request is retained only if it resolves a GitHub issue and modifies test files. The first condition provides the natural-language problem statement, since the issue text becomes the model input. The second condition introduces an initial signal that the pull request encodes intended behavior through tests rather than through an unverified code edit alone.</p>
+<p>In effect, this stage aligns three objects: an issue description, a code change, and a test change. That alignment is essential. Without it, the benchmark would contain many maintenance edits or refactors that do not represent meaningful software engineering tasks.</p>
+<p>The final stage is execution-based filtering. For each candidate task, the benchmark first applies the pull request’s test content to the base commit and records the test outcomes before the solution patch is introduced. It then applies the remaining pull request content and records the outcomes again. A task is retained only if at least one test exhibits a fail-to-pass transition after the solution patch is applied. Instances that trigger installation or runtime errors are removed as well.</p>
+<p>This criterion is the key to non-triviality. A fail-to-pass test shows that the issue corresponds to a real behavioral defect, that the added or modified tests expose the defect in the pre-fix code, and that the reference patch changes execution in a way that resolves it. The paper further notes that every SWE-bench instance contains at least one fail-to-pass test, and a substantial fraction contain more than one, which strengthens the robustness of evaluation.</p>
+<p>The three stages enforce three distinct properties. The first stage ensures realistic source material. The second ensures semantic grounding between issue text and code change. The third ensures behavioral validity under execution. This design is what separates SWE-bench from function-level code benchmarks. The benchmark does not ask whether a model can produce plausible code in isolation. It asks whether a model can interpret a real issue, modify a real repository, and generate a patch that survives repository tests.</p>
+</section>
+<section id="autonomous-coding-agents" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="autonomous-coding-agents"><span class="header-section-number">3</span> Autonomous Coding Agents</h2>
+<p>SWE-bench has had a significant influence on the development of autonomous coding systems because it reframes software engineering as a repository-level issue resolution task. Rather than evaluating isolated code generation, the benchmark evaluates whether a system can interpret an issue, navigate a repository, produce a patch, and verify the fix through test execution. This formulation naturally aligns with the design of autonomous coding agents that operate through iterative interaction with a codebase.</p>
+<p>The benchmark therefore provides a realistic evaluation environment for systems that combine reasoning, retrieval, code editing, and execution.</p>
+<section id="swe-agent" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="swe-agent"><span class="header-section-number">3.1</span> SWE-agent</h3>
+<p>One direct connection is the emergence of SWE-agent–style systems <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. These systems treat software engineering as a sequential decision-making process in which the model interacts with a repository through a series of actions. Typical actions include searching the codebase, inspecting files, generating patches, and running tests.</p>
+<p>The task structure used in SWE-bench closely matches this workflow. Each benchmark instance begins with an issue description and a repository snapshot, and success is determined by whether a generated patch resolves the issue according to the repository’s tests. This setup allows agent-based systems to be evaluated under realistic conditions, where solving the task requires exploration of the repository and iterative refinement of candidate fixes.</p>
+<p>As a result, SWE-bench provides a natural testing ground for agentic approaches that combine language models with tools for code navigation and execution.</p>
+</section>
+<section id="autonomous-coding-systems" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="autonomous-coding-systems"><span class="header-section-number">3.2</span> Autonomous Coding Systems</h3>
+<p>SWE-bench also motivated the development of more general autonomous coding systems that aim to automate repository maintenance tasks. These systems extend beyond single-shot code generation by incorporating multiple components such as retrieval modules, code editing mechanisms, and execution feedback loops.</p>
+<p>Within the SWE-bench framework, these components correspond to different stages of the issue-resolution process. Retrieval mechanisms help identify relevant files within large repositories. Code generation modules propose candidate patches. Execution feedback from the test suite provides an objective signal indicating whether the proposed fix is successful.</p>
+<p>The benchmark highlights the need for systems that integrate these capabilities rather than relying solely on direct text generation.</p>
+</section>
+<section id="agentic-software-engineering-workflows" class="level3" data-number="3.3">
+<h3 data-number="3.3" class="anchored" data-anchor-id="agentic-software-engineering-workflows"><span class="header-section-number">3.3</span> Agentic Software Engineering Workflows</h3>
+<p>More broadly, SWE-bench supports the evaluation of agentic software engineering workflows. In these workflows, the language model acts as a coordinator that plans and executes a sequence of operations required to resolve an issue. These operations may include reading documentation, examining source files, generating edits, and validating changes through test execution.</p>
+<p>The benchmark is particularly useful for this line of research because it defines success behaviorally. A solution is considered correct only if the generated patch resolves the issue according to the repository’s tests. This allows different system architectures—such as retrieval-based pipelines, long-context models, and decision-making agents—to be compared under a common evaluation setting.</p>
+<p>The importance of SWE-bench lies in how it shifts the focus of evaluation. Instead of measuring the ability to generate short code snippets, the benchmark evaluates the ability to complete a realistic software engineering task from start to finish. This requires identifying relevant context, proposing code modifications, and validating those modifications through execution.</p>
+<p>For this reason, SWE-bench has become a useful benchmark for research on autonomous coding agents. It provides a standardized environment in which systems designed for repository-level reasoning and automated issue resolution can be tested and compared.</p>
+</section>
+</section>
+<section id="context-length-and-retrieval" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="context-length-and-retrieval"><span class="header-section-number">4</span> Context Length and Retrieval</h2>
+<p>The SWE-bench evaluation reveals an important empirical pattern: model performance often decreases as the amount of provided repository context increases. Although one might expect larger context windows or broader retrieval to improve performance, the experiments show that providing more files or longer contexts can reduce task success for the evaluated models.</p>
+<p>This observation highlights a central challenge in repository-level software engineering. The relevant implementation details required to resolve an issue typically occupy only a small portion of the repository, and increasing the amount of visible code does not necessarily improve the model’s ability to identify and modify the correct location.</p>
+<section id="context-length" class="level3" data-number="4.1">
+<h3 data-number="4.1" class="anchored" data-anchor-id="context-length"><span class="header-section-number">4.1</span> Context Length</h3>
+<p>The paper reports a negative correlation between context length and model performance. As the total input context increases, the success rate of evaluated models decreases. This behavior is particularly visible for Claude 2 and is also observed for other models in the benchmark.</p>
+<p>In the experiments, models often achieve their best performance under shorter context limits. Increasing the amount of code provided to the model does not consistently improve results, suggesting that simply expanding the available context does not resolve the underlying difficulty of repository-level reasoning.</p>
+<p>The paper also investigates retrieval-based approaches using BM25 to select repository files that may be relevant to the issue description. Increasing the number of retrieved files improves the recall of files that were actually modified in the human-written fix, sometimes referred to as oracle files.</p>
+<p>However, despite improving oracle recall, the overall task success rate decreases as more files are retrieved. This indicates that improved retrieval recall does not necessarily translate into improved patch generation performance.</p>
+<p>One factor contributing to this behavior is the presence of irrelevant code in the expanded context. When additional files are retrieved, the model must process many pieces of code that are unrelated to the issue being resolved. Under these conditions, the model may struggle to identify the specific code region that requires modification.</p>
+<p>The benchmark therefore highlights a limitation in the ability of current models to localize the problematic code within a large repository context. The paper notes that these results are consistent with prior work suggesting that language models can struggle when relevant information appears deep within long contexts. When many files are included in the input, the code segments that contain the actual defect may become harder for the model to identify. This observation further illustrates the difficulty of reasoning over long and heterogeneous repository contexts.</p>
+</section>
+<section id="distribution-shift" class="level3" data-number="4.2">
+<h3 data-number="4.2" class="anchored" data-anchor-id="distribution-shift"><span class="header-section-number">4.2</span> Distribution Shift</h3>
+<p>The paper also reports a related issue for fine-tuned models such as SWE-Llama. During training, SWE-Llama is provided with oracle files corresponding exactly to the files modified in the reference solution. As a result, the model learns a setting in which each provided file is likely to require modification.</p>
+<p>At inference time, however, BM25 retrieval introduces additional files that are not intended to be edited. This creates a distribution shift between the training configuration and the inference environment. When the model encounters these additional files, it may attempt to edit code that should remain unchanged, which can further reduce performance.</p>
+<p>These findings suggest that repository-level software engineering requires more than simply increasing the amount of context available to a model. Effective systems must also be able to identify the small subset of repository files that are relevant to a given issue and focus modification efforts on those locations. SWE-bench therefore highlights the importance of context selection, code localization, and repository-scale reasoning in LLM-based software engineering systems.</p>
+</section>
+</section>
+<section id="research-implications" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="research-implications"><span class="header-section-number">5</span> Research Implications</h2>
+<p>SWE-bench highlights a shift in emphasis for LLM-based software engineering. The benchmark is not primarily about isolated function completion. Instead, it evaluates whether a model can resolve a real GitHub issue in a real repository by generating a patch that passes the relevant tests. In this setting, several research challenges become especially visible.</p>
+<section id="repository-scale-code-understanding" class="level3" data-number="5.1">
+<h3 data-number="5.1" class="anchored" data-anchor-id="repository-scale-code-understanding"><span class="header-section-number">5.1</span> Repository-Scale Code Understanding</h3>
+<p>A central challenge is repository-scale code understanding. SWE-bench tasks are defined over full repository snapshots rather than small, self-contained programs. The paper emphasizes that the relevant edits are typically a small subset of the overall codebase, which means the model must operate in an environment where most available code is irrelevant to the immediate fix. This makes repository-scale understanding a central requirement of the benchmark.</p>
+<p>This difficulty is reflected in the scale of the data. The paper reports that the average repository contains thousands of non-test files and hundreds of thousands of lines of code. Under these conditions, solving the task is not simply a matter of continuing a local code pattern. It requires identifying the parts of the repository that are most relevant to the issue.</p>
+</section>
+<section id="long-context-reasoning" class="level3" data-number="5.2">
+<h3 data-number="5.2" class="anchored" data-anchor-id="long-context-reasoning"><span class="header-section-number">5.2</span> Long-Context Reasoning</h3>
+<p>SWE-bench also highlights the challenge of long-context reasoning. The paper notes that the repository context is far larger than the context window of most language models evaluated in the study. As a result, the full codebase cannot be provided directly to the model. This makes context selection and representation an important part of the problem setting.</p>
+<p>The paper therefore motivates approaches that can work under limited context budgets, including retrieval-based methods and long-context models. The benchmark is useful precisely because it exposes the gap between the size of real repositories and the amount of code a model can inspect at once.</p>
+</section>
+<section id="edit-localization" class="level3" data-number="5.3">
+<h3 data-number="5.3" class="anchored" data-anchor-id="edit-localization"><span class="header-section-number">5.3</span> Edit Localization</h3>
+<p>Another challenge made visible by SWE-bench is the problem of identifying where edits are needed. The paper does not frame this as a separate formal task, but it repeatedly emphasizes that successful solutions require finding the relatively small number of lines that must be modified within a much larger repository. It also notes that even oracle retrieval is unrealistic in practice, since one typically does not know in advance which files will need to change.</p>
+<p>For this reason, the benchmark makes clear that repository-level software engineering is not only a generation problem. It is also a problem of locating the relevant implementation context from a natural-language issue description.</p>
+</section>
+<section id="multi-file-patch-generation" class="level3" data-number="5.4">
+<h3 data-number="5.4" class="anchored" data-anchor-id="multi-file-patch-generation"><span class="header-section-number">5.4</span> Multi-File Patch Generation</h3>
+<p>SWE-bench further highlights the challenge of multi-file patch generation. The paper reports that reference solutions often require edits across multiple files and functions rather than a single local change. This means that the benchmark tests whether a model can produce repository-consistent modifications rather than only isolated code completions.</p>
+<p>This aspect of the benchmark is important because it more closely resembles practical software maintenance. A correct patch may involve changes to core logic, helper functions, and associated tests, all of which must remain consistent under execution.</p>
+</section>
+</section>
+<section id="conclusion" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">6</span> Conclusion</h2>
+<p>Taken together, these challenges explain why SWE-bench is a useful benchmark for LLM-based software engineering. It highlights difficulties that are largely hidden by function-level benchmarks: operating over large repositories, working under limited context windows, identifying the relevant edit locations, and generating patches that may span multiple files. The paper presents SWE-bench as a setting that can be used to compare retrieval methods, long-context models, and decision-making agents on more realistic software engineering tasks.</p>
+<p>In this sense, SWE-bench does not simply make coding tasks harder. It makes the evaluation setting closer to real software engineering by shifting the focus from local code synthesis to repository-level issue resolution.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="ref-jimenezSWEbenchCanLanguage2024" class="csl-entry" role="listitem">
+Jimenez, Carlos E., John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik Narasimhan. 2024. <span>“<span class="nocase">SWE-bench</span>: <span>Can Language Models Resolve Real-World GitHub Issues</span>?”</span> arXiv. <a href="https://arxiv.org/abs/2310.06770">https://arxiv.org/abs/2310.06770</a>.
+</div>
+<div id="ref-yangSWEagentAgentComputerInterfaces2024" class="csl-entry" role="listitem">
+Yang, John, Carlos E. Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao, Karthik Narasimhan, and Ofir Press. 2024. <span>“<span class="nocase">SWE-agent</span>: <span>Agent-Computer Interfaces Enable Automated Software Engineering</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2405.15793">https://arxiv.org/abs/2405.15793</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
