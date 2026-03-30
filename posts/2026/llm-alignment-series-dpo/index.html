@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-03-29">
+
+<title>LLM Alignment Series: Direct Preference Optimization – Policy Gradient Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-d4ee5a9f0532c1c0be595bfd7968214a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">LLM Alignment Series: Direct Preference Optimization</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 29, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#dpo-v.s.-ppo" id="toc-dpo-v.s.-ppo"><span class="header-section-number">2</span> DPO v.s. PPO</a></li>
+  <li><a href="#soft-value-function-baseline-and-advantage" id="toc-soft-value-function-baseline-and-advantage"><span class="header-section-number">3</span> Soft Value Function , Baseline, and Advantage</a>
+  <ul>
+  <li><a href="#why-the-baseline-does-not-change-the-expected-gradient" id="toc-why-the-baseline-does-not-change-the-expected-gradient"><span class="header-section-number">3.1</span> Why the Baseline Does Not Change the Expected Gradient</a></li>
+  <li><a href="#why-the-baseline-changes-the-variance" id="toc-why-the-baseline-changes-the-variance"><span class="header-section-number">3.2</span> Why the Baseline Changes the Variance</a></li>
+  <li><a href="#why-this-matters-in-ppo-style-rlhf" id="toc-why-this-matters-in-ppo-style-rlhf"><span class="header-section-number">3.3</span> Why This Matters in PPO-Style RLHF</a></li>
+  <li><a href="#why-dpo-avoids-the-baseline-problem" id="toc-why-dpo-avoids-the-baseline-problem"><span class="header-section-number">3.4</span> Why DPO Avoids the Baseline Problem</a></li>
+  </ul></li>
+  <li><a href="#dpo-is-not-just-a-generic-pairwise-ranking-loss" id="toc-dpo-is-not-just-a-generic-pairwise-ranking-loss"><span class="header-section-number">4</span> DPO Is Not Just a Generic Pairwise Ranking Loss</a></li>
+  <li><a href="#sequence-level-v.s.-token-level-advantage" id="toc-sequence-level-v.s.-token-level-advantage"><span class="header-section-number">5</span> Sequence-Level v.s. Token-Level Advantage</a>
+  <ul>
+  <li><a href="#why-it-can-be-viewed-as-an-advantage" id="toc-why-it-can-be-viewed-as-an-advantage"><span class="header-section-number">5.1</span> Why It Can Be Viewed as an Advantage</a></li>
+  <li><a href="#pairwise-advantage-margin-in-dpo" id="toc-pairwise-advantage-margin-in-dpo"><span class="header-section-number">5.2</span> Pairwise Advantage Margin in DPO</a></li>
+  </ul></li>
+  </ul>
+</nav>
+<section id="introduction" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">1</span> Introduction</h2>
+<p>Direct Preference Optimization (DPO) is designed to replace the preference-learning stage of RLHF after supervised fine-tuning. More concretely, it compresses the usual two-step procedure—first training a reward model, and then optimizing the policy with an RL algorithm such as PPO <span class="citation" data-cites="schulmanProximalPolicyOptimization2017">(<a href="#ref-schulmanProximalPolicyOptimization2017" role="doc-biblioref">Schulman et al. 2017</a>)</span> into a single-stage method that trains the policy directly on preference pairs. The paper <span class="citation" data-cites="rafailovDirectPreferenceOptimization2024">(<a href="#ref-rafailovDirectPreferenceOptimization2024" role="doc-biblioref">Rafailov et al. 2024</a>)</span> begins by reviewing the standard three-stage RLHF pipeline, consisting of supervised fine-tuning, reward modeling, and RL-based policy optimization, and then proposes DPO as an alternative that does not require explicit reward-model training or reinforcement learning in the usual sense. Instead, the policy is optimized directly from preference data .</p>
+<p>The motivation comes from several practical weaknesses of standard RLHF. The first is pipeline complexity: traditional RLHF requires multiple models and additional optimization machinery, making it substantially more complicated than ordinary supervised learning. The second is training instability: the paper explicitly describes RLHF as a complex and often unstable procedure, and notes that actor-critic and PPO-style methods can suffer from high-variance updates and unstable dynamics. The third is computational cost: standard RLHF requires sampling from the current language-model policy inside the training loop, which is expensive, whereas DPO avoids this online sampling step. The fourth is engineering burden: RLHF typically involves substantial hyperparameter tuning and implementation overhead, while DPO is presented as a simpler, more stable, and more lightweight alternative.</p>
+<p>In summary, DPO replaces the entire “reward model + PPO” back half of RLHF with a direct preference-optimization objective. Its key move is to rewrite the original RLHF objective into a simple binary cross-entropy style loss, so that the policy can be learned directly from pairwise preference data.</p>
+</section>
+<section id="dpo-v.s.-ppo" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="dpo-v.s.-ppo"><span class="header-section-number">2</span> DPO v.s. PPO</h2>
+<p>The central claim of DPO is not that it approximates PPO. Rather, under a particular preference-model assumption, it optimizes the same KL-constrained RLHF objective in an equivalent way, while avoiding both explicit reward-model training and the reinforcement-learning loop.</p>
+<p>In the standard RLHF pipeline, the second stage proceeds in two steps. One first fits a reward model, and then uses an RL algorithm such as PPO to optimize the policy under a KL regularization term:</p>
+<p><span class="math display">
+\max_\pi \; \mathbb{E}_{y \sim \pi(\cdot \mid x)}[r(x,y)] - \beta D_{\mathrm{KL}}(\pi(\cdot \mid x)\,\|\,\pi_{\mathrm{ref}}(\cdot \mid x)).
+</span></p>
+<p>DPO starts from this same KL-constrained reward-maximization objective. Its key theoretical step is to use the closed-form expression of the optimal policy under this objective:</p>
+<p><span class="math display">
+\pi_r(y \mid x) \propto \pi_{\mathrm{ref}}(y \mid x)\exp\!\left(\frac{r(x,y)}{\beta}\right).
+</span></p>
+<p>This expression shows that the reward can be reparameterized in terms of the log-ratio between the policy and the reference policy. Once this change of variables is made, and once preferences are modeled with a Bradley–Terry model, the original RLHF objective can be rewritten as a direct binary cross-entropy objective on preference pairs. The result is that the policy can be trained directly, without separately fitting a reward model and without running PPO or any other online RL algorithm.</p>
+<p>PPO is one RL-based algorithm for optimizing the KL-constrained objective. DPO is a direct policy optimization method obtained by rewriting that same objective through a change of variables. For this reason, the paper does not present DPO as an approximation to PPO. Instead, it argues that the two methods optimize the same underlying objective, but follow different optimization routes.</p>
+</section>
+<section id="soft-value-function-baseline-and-advantage" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="soft-value-function-baseline-and-advantage"><span class="header-section-number">3</span> Soft Value Function , Baseline, and Advantage</h2>
+<p>This point can be understood at three closely related levels. The paper gives the optimal policy for the KL-constrained RLHF objective:</p>
+<p><span class="math display">
+\pi_r(y \mid x) = \frac{1}{Z(x)} \pi_{\mathrm{ref}}(y \mid x)\exp(r(x,y)/\beta),
+</span></p>
+<p>where</p>
+<p><span class="math display">
+Z(x) = \sum_y \pi_{\mathrm{ref}}(y \mid x)\exp(r(x,y)/\beta).
+</span></p>
+<p>Later, the PPO-side derivation contains the term</p>
+<p><span class="math display">
+\beta \log \sum_y \pi_{\mathrm{ref}}(y \mid x)\exp(r_\phi(x,y)/\beta).
+</span></p>
+<p>The paper explicitly interprets this normalization term as the soft value function under the reference policy <span class="math inline">\pi_{\mathrm{ref}}</span>. It is called a value function because it depends only on the prompt <span class="math inline">x</span> and aggregates, for that prompt, the overall attainable quality across all possible completions. It is called soft because the aggregation is not an ordinary maximum, but a log-sum-exp. This is the same structural object that appears in maximum-entropy RL and control-as-inference, where one writes</p>
+<p><span class="math display">
+V(s) = \alpha \log \sum_a \exp(Q(s,a)/\alpha).
+</span></p>
+<p>The only difference here is that the completions are additionally weighted by the reference policy <span class="math inline">\pi_{\mathrm{ref}}(y \mid x)</span>. Intuitively, <span class="math inline">r(x,y)</span> is the score of one particular completion, while</p>
+<p><span class="math display">
+\beta \log \sum_y \pi_{\mathrm{ref}}(y \mid x)\exp(r(x,y)/\beta)
+</span></p>
+<p>represents the overall attainable score level for the prompt as a whole. In that sense, it behaves like a state-level value rather than an action-level value.</p>
+<p>This immediately leads to the analogy with advantage functions. In standard RL, one distinguishes among <span class="math inline">Q(s,a)</span>, which measures the value of taking a particular action, <span class="math inline">V(s)</span>, which measures the overall value of the state, and <span class="math inline">A(s,a)=Q(s,a)-V(s)</span>, which measures how much better a given action is than the state average. The same analogy applies here. The completion-level reward <span class="math inline">r_\phi(x,y)</span> plays the role of a Q-like score, while the normalization term plays the role of a soft value <span class="math inline">V(x)</span>. Their difference therefore measures how much better a completion is relative to the overall level of that prompt. Although the paper does not explicitly name this quantity an advantage, the interpretation is very close:</p>
+<p><span class="math display">
+\underbrace{r_\phi(x,y)}_{\text{Q-like}}
+\;-\;
+\underbrace{\beta \log \sum_y \pi_{\mathrm{ref}}(y \mid x)\exp(r_\phi(x,y)/\beta)}_{\text{soft }V(x)}.
+</span></p>
+<p>This is naturally viewed as a soft advantage.</p>
+<p>The same term is also a baseline in the policy-gradient sense. In policy-gradient methods, any quantity that depends only on the state, or here only on the prompt <span class="math inline">x</span>, can be used as a baseline. Such a term does not change the optimal solution, but it can substantially reduce gradient variance. The normalization term has exactly this property: it depends on <span class="math inline">x</span> but not on the sampled completion <span class="math inline">y</span>. That is why the paper notes that this term does not affect the optimal solution, but that omitting it can lead to high-variance policy gradients. It can therefore be handled using a learned value function, or approximated by a completion baseline. DPO avoids this difficulty through reparameterization.</p>
+<p>The reason variance increases without this term is also intuitive. If one directly uses <span class="math inline">r_\phi(x,y)</span> in the policy gradient, then the gradient mixes together two kinds of signal: the relative quality of the sampled completion, and the prompt-level offset induced by the overall scale of rewards under that prompt. What one really wants to know is not whether a completion has a high absolute reward, but whether it is better than other plausible completions for the same prompt. The normalization term performs exactly this centering or calibration step. With it, the update behaves more like advantage learning. Without it, prompt-level common offsets remain inside the gradient and increase variance.</p>
+<p>This is precisely where DPO becomes especially elegant. The paper rewrites the reward as</p>
+<p><span class="math display">
+r(x,y) = \beta \log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)} + \beta \log Z(x),
+</span></p>
+<p>where <span class="math inline">\beta \log Z(x)</span> is exactly the normalization term discussed above. However, under the Bradley–Terry preference model, DPO only depends on reward differences. When comparing a chosen response <span class="math inline">y_w</span> and a rejected response <span class="math inline">y_l</span>, one forms</p>
+<p><span class="math display">
+r(x,y_w) - r(x,y_l),
+</span></p>
+<p>and the term <span class="math inline">\beta \log Z(x)</span> cancels exactly because it depends only on <span class="math inline">x</span>. As a result, DPO does not need to estimate this soft value or baseline explicitly. This is why PPO or actor-critic style methods require a baseline or value function to accommodate the term, whereas DPO makes it disappear automatically through pairwise reward differences.</p>
+<p>In one sentence, this normalization term is called a soft value function because it is the log-sum-exp aggregate value of all completions under a prompt; it behaves like a baseline because it depends only on the prompt and can be subtracted to reduce variance; and it corresponds to advantage because reward minus this soft value is, in effect, a soft advantage.</p>
+<section id="why-the-baseline-does-not-change-the-expected-gradient" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="why-the-baseline-does-not-change-the-expected-gradient"><span class="header-section-number">3.1</span> Why the Baseline Does Not Change the Expected Gradient</h3>
+<p>It is helpful to rewrite Eq. 10 in the paper for a fixed prompt <span class="math inline">x</span>. Define the prompt-conditioned objective as</p>
+<p><span class="math display">
+J_x(\theta)
+=
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+-
+f(x)
+-
+\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
+\right],
+</span></p>
+<p>where</p>
+<p><span class="math display">
+f(x)
+=
+\beta \log \sum_y \pi_{\mathrm{ref}}(y \mid x)\exp(r_\phi(x,y)/\beta).
+</span></p>
+<p>The paper interprets it as the soft value function under the reference policy, and notes that without it, the policy gradient can have high variance. The key structural fact is that <span class="math inline">f(x)</span> depends only on the prompt <span class="math inline">x</span>, not on the sampled completion <span class="math inline">y</span>. For that reason, it is a standard state-dependent, or here prompt-dependent, baseline.</p>
+<p>To see why such a baseline does not change the expected gradient, begin by differentiating the objective:</p>
+<p><span class="math display">
+\nabla_\theta J_x
+=
+\nabla_\theta
+\sum_y
+\pi_\theta(y \mid x)
+\left[
+r_\phi(x,y)-f(x)-\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
+\right].
+</span></p>
+<p>Let</p>
+<p><span class="math display">
+A_\theta(x,y)
+=
+r_\phi(x,y)-f(x)-\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}.
+</span></p>
+<p>Then</p>
+<p><span class="math display">
+\nabla_\theta J_x
+=
+\sum_y \nabla_\theta \pi_\theta(y \mid x) A_\theta(x,y)
++
+\sum_y \pi_\theta(y \mid x)\nabla_\theta A_\theta(x,y).
+</span></p>
+<p>Since <span class="math inline">r_\phi(x,y)</span>, <span class="math inline">f(x)</span>, and <span class="math inline">\pi_{\mathrm{ref}}(y \mid x)</span> do not depend on <span class="math inline">\theta</span>, only the <span class="math inline">\log \pi_\theta(y \mid x)</span> term contributes to <span class="math inline">\nabla_\theta A_\theta(x,y)</span>. Therefore,</p>
+<p><span class="math display">
+\nabla_\theta A_\theta(x,y)
+=
+-\beta \nabla_\theta \log \pi_\theta(y \mid x).
+</span></p>
+<p>Using the identity</p>
+<p><span class="math display">
+\nabla_\theta \pi_\theta(y \mid x)
+=
+\pi_\theta(y \mid x)\nabla_\theta \log \pi_\theta(y \mid x),
+</span></p>
+<p>we obtain</p>
+<p><span class="math display">
+\nabla_\theta J_x
+=
+\mathbb{E}_{y \sim \pi_\theta}
+\left[
+A_\theta(x,y)\nabla_\theta \log \pi_\theta(y \mid x)
+\right]
+-
+\beta
+\mathbb{E}_{y \sim \pi_\theta}
+\left[
+\nabla_\theta \log \pi_\theta(y \mid x)
+\right].
+</span></p>
+<p>The second expectation vanishes because</p>
+<p><span class="math display">
+\mathbb{E}_{y \sim \pi_\theta}
+[\nabla_\theta \log \pi_\theta(y \mid x)]
+=
+\sum_y \pi_\theta(y \mid x)\nabla_\theta \log \pi_\theta(y \mid x)
+=
+\sum_y \nabla_\theta \pi_\theta(y \mid x)
+=
+\nabla_\theta \sum_y \pi_\theta(y \mid x)
+=
+\nabla_\theta 1
+=
+0.
+</span></p>
+<p>Thus the gradient reduces to</p>
+<p><span class="math display">
+\nabla_\theta J_x
+=
+\mathbb{E}_{y \sim \pi_\theta}
+\left[
+\left(
+r_\phi(x,y)-f(x)-\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
+\right)
+\nabla_\theta \log \pi_\theta(y \mid x)
+\right].
+</span></p>
+<p>Now isolate the contribution of the baseline term <span class="math inline">f(x)</span>. Since it does not depend on <span class="math inline">y</span>, we have</p>
+<p><span class="math display">
+\mathbb{E}_{y \sim \pi_\theta}
+\left[
+f(x)\nabla_\theta \log \pi_\theta(y \mid x)
+\right]
+=
+f(x)
+\mathbb{E}_{y \sim \pi_\theta}
+[\nabla_\theta \log \pi_\theta(y \mid x)]
+=
+f(x)\cdot 0
+=
+0.
+</span></p>
+<p>This is the fundamental reason a baseline does not change the expected gradient. As long as it depends only on the prompt and not on the sampled completion, its contribution disappears in expectation after multiplication by the score function <span class="math inline">\nabla_\theta \log \pi_\theta(y \mid x)</span>.</p>
+</section>
+<section id="why-the-baseline-changes-the-variance" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="why-the-baseline-changes-the-variance"><span class="header-section-number">3.2</span> Why the Baseline Changes the Variance</h3>
+<p>Although the expected gradient is unchanged, the per-sample gradient is changed. Without the baseline, the single-sample gradient has the form</p>
+<p><span class="math display">
+g(y)
+=
+\left(
+r_\phi(x,y)-\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
+\right)
+\nabla_\theta \log \pi_\theta(y \mid x).
+</span></p>
+<p>With the baseline <span class="math inline">f(x)</span> included, it becomes</p>
+<p><span class="math display">
+g_b(y)
+=
+\left(
+r_\phi(x,y)-f(x)-\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
+\right)
+\nabla_\theta \log \pi_\theta(y \mid x).
+</span></p>
+<p>These two random variables have the same mean, but in general they do not have the same variance:</p>
+<p><span class="math display">
+\mathrm{Var}[g_b(y)] \neq \mathrm{Var}[g(y)].
+</span></p>
+<p>The intuition is that the baseline removes the prompt-level common offset shared by all completions for the same prompt. Without this subtraction, the gradient weight mixes together several effects: the overall difficulty of the prompt, the overall reward level of the completion set under that prompt, and the relative quality of the sampled completion compared with competing completions. What one really wants for stable policy optimization is mainly the third component. The baseline suppresses the first two by centering the signal. As a result, the gradient becomes closer to a relative-improvement signal and its sample-to-sample fluctuation is reduced.</p>
+<p>This also explains why the term</p>
+<p><span class="math display">
+r_\phi(x,y)-f(x)
+</span></p>
+<p>is naturally viewed as an advantage-like quantity. The reward <span class="math inline">r_\phi(x,y)</span> plays the role of a completion-level Q-like score, while <span class="math inline">f(x)</span> plays the role of a prompt-level soft value. Their difference measures how much better a completion is than the overall level associated with that prompt. In RL language, the word value emphasizes its state-level role, the word baseline emphasizes its variance-reduction role in policy gradients, and the word advantage emphasizes the centered difference structure. These are three views of the same mathematical object.</p>
+</section>
+<section id="why-this-matters-in-ppo-style-rlhf" class="level3" data-number="3.3">
+<h3 data-number="3.3" class="anchored" data-anchor-id="why-this-matters-in-ppo-style-rlhf"><span class="header-section-number">3.3</span> Why This Matters in PPO-Style RLHF</h3>
+<p>This issue is especially important in PPO-style RLHF because the action space is extremely large and the sampling noise is already substantial. If each sampled completion carries a large prompt-dependent offset in its gradient weight, the updates can become highly unstable. That is why the paper emphasizes that omitting the normalization term leads to high-variance policy gradients. In practice, one can try to learn a value function to approximate this term, or use a completion baseline, but both introduce additional estimation and engineering burden.</p>
+<p>A more compact way to express this is to define</p>
+<p><span class="math display">
+w(y)
+=
+r_\phi(x,y)-\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)},
+\qquad
+s(y)
+=
+\nabla_\theta \log \pi_\theta(y \mid x).
+</span></p>
+<p>Then the one-sample gradient takes the form</p>
+<p><span class="math display">
+(w(y)-b(x))s(y).
+</span></p>
+<p>For fixed <span class="math inline">x</span>, a well-chosen baseline <span class="math inline">b(x)</span> reduces the spread of this product. In classical policy-gradient theory, the optimal scalar baseline is a weighted average return under the score-function norm. Here, the paper points out that the normalization term in Eq. 10 provides exactly such a meaningful soft value or baseline.</p>
+</section>
+<section id="why-dpo-avoids-the-baseline-problem" class="level3" data-number="3.4">
+<h3 data-number="3.4" class="anchored" data-anchor-id="why-dpo-avoids-the-baseline-problem"><span class="header-section-number">3.4</span> Why DPO Avoids the Baseline Problem</h3>
+<p>This is where the DPO reparameterization becomes especially elegant. The paper rewrites the reward as</p>
+<p><span class="math display">
+r(x,y)
+=
+\beta \log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
++
+\beta \log Z(x),
+</span></p>
+<p>where <span class="math inline">\beta \log Z(x)</span> is precisely the normalization term discussed above. Under the Bradley–Terry preference model, however, DPO depends only on reward differences. When comparing a chosen response <span class="math inline">y_w</span> and a rejected response <span class="math inline">y_l</span>, one forms</p>
+<p><span class="math display">
+r(x,y_w)-r(x,y_l),
+</span></p>
+<p>and the term <span class="math inline">\beta \log Z(x)</span> cancels exactly because it depends only on the prompt <span class="math inline">x</span>. As a result, DPO never needs to estimate this soft value or baseline explicitly. This is why the paper states that the DPO reparameterization yields a reward representation that does not require baselines.</p>
+<p>In one sentence, the baseline does not change the expected gradient because it depends only on the prompt and therefore has zero expectation when multiplied by <span class="math inline">\nabla_\theta \log \pi_\theta</span>; it reduces variance because it removes prompt-level common offsets and leaves behind a more advantage-like relative-improvement signal.</p>
+</section>
+</section>
+<section id="dpo-is-not-just-a-generic-pairwise-ranking-loss" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="dpo-is-not-just-a-generic-pairwise-ranking-loss"><span class="header-section-number">4</span> DPO Is Not Just a Generic Pairwise Ranking Loss</h2>
+<p>At the level of surface form, the DPO objective is indeed a pairwise logistic, or binary cross-entropy, loss. However, it should not be understood as an ordinary pairwise ranking loss. What it ranks is not an arbitrary score function, but a quantity with a precise RLHF interpretation: an implicit reward defined relative to a reference policy. Equivalently, it can be viewed as a reference-adjusted, advantage-like margin.</p>
+<p>To see the distinction, it is useful to begin with the standard pairwise ranking objective:</p>
+<p><span class="math display">
+-\log \sigma\big(s_\theta(x,y_w)-s_\theta(x,y_l)\big).
+</span></p>
+<p>Here, <span class="math inline">s_\theta(x,y)</span> is just an unconstrained scoring function. The objective only says that the chosen response should receive a higher score than the rejected one. This is sufficient for ranking, but it does not specify what the score means. It may be a heuristic ranking score with no principled relation to the KL-constrained RLHF objective, the reference policy, or the closed-form optimal policy.</p>
+<p>DPO is different because its score is not introduced arbitrarily. Instead, it is derived from the KL-constrained RLHF objective. Starting from the optimal policy form, the reward can be reparameterized as</p>
+<p><span class="math display">
+r(x,y)
+=
+\beta \log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
++
+\beta \log Z(x).
+</span></p>
+<p>Under the Bradley–Terry preference model, only reward differences matter. As a result, the prompt-dependent term <span class="math inline">\beta \log Z(x)</span> cancels in pairwise comparisons, and the preference probability becomes</p>
+<p><span class="math display">
+p^*(y_w \succ y_l \mid x)
+=
+\sigma\left(
+\beta \log \frac{\pi^*(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta \log \frac{\pi^*(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)}
+\right).
+</span></p>
+<p>This leads to the DPO loss</p>
+<p><span class="math display">
+L_{\mathrm{DPO}}
+=
+-\log \sigma\left(
+\beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)}
+\right).
+</span></p>
+<p>The quantity being compared is therefore</p>
+<p><span class="math display">
+\hat r_\theta(x,y)
+=
+\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)},
+</span></p>
+<p>which the paper interprets as an implicit reward induced by the language model. In other words, DPO is not merely learning that the chosen response should have a higher arbitrary score. It is learning that the chosen response should have a higher reference-adjusted implicit reward than the rejected one.</p>
+<p>This is also why the DPO objective is naturally connected to an advantage-like interpretation. Recall that the original reward decomposition contains a prompt-dependent normalization term:</p>
+<p><span class="math display">
+r(x,y)
+=
+\beta \log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
++
+\beta \log Z(x).
+</span></p>
+<p>The second term depends only on the prompt and behaves like a soft value function or baseline. When one forms the pairwise difference,</p>
+<p><span class="math display">
+r(x,y_w)-r(x,y_l)
+=
+\beta \log \frac{\pi(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta \log \frac{\pi(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)},
+</span></p>
+<p>the baseline disappears. What remains is not an absolute reward, but a relative, normalized comparison between completions under the same prompt. For that reason, DPO can be viewed as learning whether the chosen response has a positive advantage-like margin over the rejected response, and how large that margin is.</p>
+<p>This reference adjustment is essential. If one removed the reference policy and wrote instead</p>
+<p><span class="math display">
+-\log \sigma\big(\log \pi_\theta(y_w \mid x)-\log \pi_\theta(y_l \mid x)\big),
+</span></p>
+<p>the objective would reduce to a much more naive pairwise likelihood-pushing rule: increase the probability of preferred responses and decrease the probability of dispreferred ones. DPO does not do this. It compares</p>
+<p><span class="math display">
+\log \pi_\theta(y \mid x)-\log \pi_{\mathrm{ref}}(y \mid x),
+</span></p>
+<p>which measures how much additional preference the current policy assigns to a completion relative to the reference policy. This is precisely how KL information is encoded into the objective. The result is a ranking-like loss with reference anchoring, KL semantics, and a reward interpretation, rather than a generic ranking surrogate.</p>
+<p>The gradient makes this margin-sensitive behavior even clearer. The paper writes the DPO gradient as</p>
+<p><span class="math display">
+\nabla_\theta L_{\mathrm{DPO}}
+=
+-\beta \,\mathbb{E}\left[
+\sigma\big(\hat r_\theta(x,y_l)-\hat r_\theta(x,y_w)\big)
+\big(\nabla \log \pi_\theta(y_w \mid x)-\nabla \log \pi_\theta(y_l \mid x)\big)
+\right].
+</span></p>
+<p>This form shows that DPO is not only learning the correct ordering. The update magnitude also depends on how severely the implicit reward model misorders the pair. If the chosen response already has a much larger implicit reward than the rejected one, the update becomes small. If the rejected response is incorrectly favored, the update becomes large. This is the behavior of a margin-sensitive correction rule, not merely a binary ordering rule.</p>
+<p>The most accurate summary is therefore the following. In form, DPO uses a pairwise logistic loss. In meaning, it performs maximum-likelihood learning on the implicit reward difference induced by the KL-constrained RLHF objective. Because this difference is reference-adjusted and baseline-cancelled, it is best understood as an advantage-like margin rather than an arbitrary ranking score.</p>
+<p>The ordinary pairwise ranking learns which response should score higher, whereas DPO learns which response is better in reference-relative implicit reward, and by how much.</p>
+</section>
+<section id="sequence-level-v.s.-token-level-advantage" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="sequence-level-v.s.-token-level-advantage"><span class="header-section-number">5</span> Sequence-Level v.s. Token-Level Advantage</h2>
+<p>The reference-adjusted log-ratio in DPO can be understood as a sequence-level, reference-relative, soft-baseline-canceled advantage signal. At the same time, it should not be confused with the token-level advantage used in traditional reinforcement learning.</p>
+<p>The paper defines the implicit reward as</p>
+<p><span class="math display">
+\hat r_\theta(x,y)
+=
+\beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)},
+</span></p>
+<p>and interprets the normalization term in Eq. 10 of the paper <span class="citation" data-cites="rafailovDirectPreferenceOptimization2024">(<a href="#ref-rafailovDirectPreferenceOptimization2024" role="doc-biblioref">Rafailov et al. 2024</a>)</span> as a soft value function under the reference policy. Because the DPO objective depends only on reward differences, this prompt-dependent normalization term cancels out, leaving a quantity that is naturally interpreted relative to a baseline.</p>
+<section id="why-it-can-be-viewed-as-an-advantage" class="level3" data-number="5.1">
+<h3 data-number="5.1" class="anchored" data-anchor-id="why-it-can-be-viewed-as-an-advantage"><span class="header-section-number">5.1</span> Why It Can Be Viewed as an Advantage</h3>
+<p>In reinforcement learning, an advantage measures how much better an action is compared to a baseline or state value. DPO admits a closely related decomposition. The reparameterized reward takes the form</p>
+<p><span class="math display">
+r(x,y)
+=
+\beta \log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}
++
+\beta \log Z(x),
+</span></p>
+<p>where <span class="math inline">\beta \log Z(x)</span> depends only on the prompt and behaves like a soft value or baseline. The remaining term,</p>
+<p><span class="math display">
+\beta \log \frac{\pi(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)},
+</span></p>
+<p>measures how much additional preference the policy assigns to a completion relative to the reference policy. This can be interpreted as a gain over a reference distribution, and therefore resembles an advantage-like quantity.</p>
+</section>
+<section id="pairwise-advantage-margin-in-dpo" class="level3" data-number="5.2">
+<h3 data-number="5.2" class="anchored" data-anchor-id="pairwise-advantage-margin-in-dpo"><span class="header-section-number">5.2</span> Pairwise Advantage Margin in DPO</h3>
+<p>Under the Bradley–Terry preference model, only reward differences are relevant. When comparing a chosen response <span class="math inline">y_w</span> and a rejected response <span class="math inline">y_l</span>, the baseline term cancels:</p>
+<p><span class="math display">
+r(x,y_w)-r(x,y_l)
+=
+\beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_{\mathrm{ref}}(y_l \mid x)}.
+</span></p>
+<p>As a result, DPO does not compare absolute scores, but relative gains under the same prompt. The objective asks which completion is more preferred relative to the reference policy, and by how much. This is why the signal behaves like a pairwise advantage margin: it captures both the sign of preference and the magnitude of the margin.</p>
+<p>Despite this analogy, the DPO signal is fundamentally different from the token-level advantage used in actor-critic methods.</p>
+<p>First, it is sequence-level. Both <span class="math inline">\pi_\theta(y \mid x)</span> and <span class="math inline">\pi_{\mathrm{ref}}(y \mid x)</span> are probabilities over entire completions. The DPO loss is defined over full sequences, not individual tokens. Although sequence probabilities can be decomposed into sums of token log-probabilities in practice, the theoretical object remains a completion-level quantity rather than a per-step signal.</p>
+<p>Second, it is not derived from Bellman or temporal-difference structure. In standard RL, advantages such as <span class="math inline">A_t = Q_t - V_t</span> depend on state transitions, future return decomposition, and often bootstrapped value estimates. DPO does not involve this form of credit assignment. Instead, it starts from the closed-form optimal policy of a KL-constrained objective, performs a change of variables, and learns from offline preference pairs. The reward signal is implicit and static, rather than recursively defined.</p>
+<p>Third, it is reference-relative rather than purely state-relative. A traditional advantage answers the question: how much better is this action than the average outcome under the current state. In contrast, the DPO signal answers: how much more preference does the current policy assign to this completion relative to a fixed reference policy. This reference anchoring encodes the KL constraint directly into the signal. Without it, the objective would collapse into a naive pairwise likelihood adjustment without the intended RLHF semantics.</p>
+<p>The difference is also evident in the gradient structure. The DPO gradient is weighted by</p>
+<p><span class="math display">
+\sigma\big(\hat r_\theta(x,y_l)-\hat r_\theta(x,y_w)\big),
+</span></p>
+<p>which increases when the model incorrectly assigns higher implicit reward to the rejected response. The update then simultaneously increases the likelihood of the chosen response and decreases that of the rejected one. This is a correction of sequence-level pairwise ordering errors, not a token-level adjustment guided by per-step advantages.</p>
+<p>In summary, the reference-adjusted log-ratio behaves like an advantage because it measures the gain of a completion relative to a baseline induced by the reference policy. However, it is not equivalent to a traditional token-level advantage. It is a sequence-level, pairwise, offline preference-based margin defined through implicit rewards, rather than a Bellman-style, stepwise credit assignment signal. DPO learns which completion is more preferable relative to a reference policy, whereas standard RL advantage learning evaluates how each action compares to the expected value at a given state.</p>
+
+
+
+</section>
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-rafailovDirectPreferenceOptimization2024" class="csl-entry" role="listitem">
+Rafailov, Rafael, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. 2024. <em>Direct <span>Preference Optimization</span>: <span>Your Language Model</span> Is <span>Secretly</span> a <span>Reward Model</span></em>. arXiv:2305.18290. arXiv. <a href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a>.
+</div>
+<div id="ref-schulmanProximalPolicyOptimization2017" class="csl-entry" role="listitem">
+Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. <em>Proximal <span>Policy Optimization Algorithms</span></em>. arXiv:1707.06347. arXiv. <a href="https://arxiv.org/abs/1707.06347">https://arxiv.org/abs/1707.06347</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

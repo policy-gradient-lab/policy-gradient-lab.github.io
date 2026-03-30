@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.8.27">
+<meta name="generator" content="quarto-1.9.36">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -10,6 +10,9 @@
 
 <title>LLM Alignment Series: Proximal Policy Optimization – Policy Gradient Lab</title>
 <style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
 div.columns{display: flex; gap: min(4vw, 1.5em);}
@@ -25,7 +28,6 @@ ul.task-list li input[type="checkbox"] {
 div.csl-bib-body { }
 div.csl-entry {
   clear: both;
-  margin-bottom: 0em;
 }
 .hanging-indent div.csl-entry {
   margin-left:2em;
@@ -53,15 +55,14 @@ div.csl-indent {
 <meta name="quarto:offset" content="../../../">
 <script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="../../../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
 <script src="../../../site_libs/quarto-html/popper.min.js"></script>
 <script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="../../../site_libs/quarto-html/anchor.min.js"></script>
 <link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-93c8e7af82e4d696d10af310f1e9abe1.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-d4ee5a9f0532c1c0be595bfd7968214a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -434,7 +435,7 @@ r(x,y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}.
 </span></p>
 <p>This removes the need to train a separate reward model and avoids the full PPO pipeline of online sampling, reward fitting, value estimation, and policy optimization. Instead, the policy is trained directly on chosen-versus-rejected response pairs, with the objective encouraging higher relative probability on preferred outputs.</p>
 <p>Kahneman-Tversky Optimization (KTO) <span class="citation" data-cites="ethayarajhKTOModelAlignment2024">(<a href="#ref-ethayarajhKTOModelAlignment2024" role="doc-biblioref">Ethayarajh et al. 2024</a>)</span> pushes this simplification further by relaxing the paired-data requirement used in DPO. DPO assumes that, for each prompt, one has both a preferred and a dispreferred response. KTO instead works with unpaired binary feedback, where a sample is labeled only as desirable or undesirable. This makes the method easier to apply when full preference pairs are difficult to collect or curate. Like DPO, KTO avoids online rollout generation and operates directly on a fixed dataset with a deterministic objective.</p>
-<p>DPO and KTO are part of a broader move toward simpler preference-based alignment objectives. IPO, or Identity Preference Optimization <span class="citation" data-cites="azarGeneralTheoreticalParadigm2023">(<a href="#ref-azarGeneralTheoreticalParadigm2023" role="doc-biblioref">Azar et al. 2023</a>)</span>, revisits the DPO-style formulation and modifies the objective in a way intended to improve optimization behavior. ORPO, or Odds Ratio Preference Optimization <span class="citation" data-cites="hongORPOMonolithicPreference2024">(<a href="#ref-hongORPOMonolithicPreference2024" role="doc-biblioref">Hong, Lee, and Thorne 2024</a>)</span>, combines supervised fine-tuning and preference optimization into a single stage, which makes the training pipeline simpler. SimPO, or Simple Preference Optimization <span class="citation" data-cites="mengSimPOSimplePreference2024">(<a href="#ref-mengSimPOSimplePreference2024" role="doc-biblioref">Meng, Xia, and Chen 2024</a>)</span>, further reduces the dependence on an explicit reference model while keeping the basic preference-learning structure. More recently, GRPO, or Group Relative Policy Optimization <span class="citation" data-cites="shaoDeepSeekMathPushingLimits2024">(<a href="#ref-shaoDeepSeekMathPushingLimits2024" role="doc-biblioref">Shao et al. 2024</a>)</span>, has attracted attention in settings where relative comparisons across multiple candidates are more natural than scalar reward modeling, especially in reasoning-focused training.</p>
+<p>DPO and KTO are part of a broader move toward simpler preference-based alignment objectives. IPO, or Identity Preference Optimization <span class="citation" data-cites="azarGeneralTheoreticalParadigm2023">(<a href="#ref-azarGeneralTheoreticalParadigm2023" role="doc-biblioref">Azar et al. 2023</a>)</span>, revisits the DPO-style formulation and modifies the objective in a way intended to improve optimization behavior. ORPO, or Odds Ratio Preference Optimization <span class="citation" data-cites="hongORPOMonolithicPreference2024">(<a href="#ref-hongORPOMonolithicPreference2024" role="doc-biblioref">Hong et al. 2024</a>)</span>, combines supervised fine-tuning and preference optimization into a single stage, which makes the training pipeline simpler. SimPO, or Simple Preference Optimization <span class="citation" data-cites="mengSimPOSimplePreference2024">(<a href="#ref-mengSimPOSimplePreference2024" role="doc-biblioref">Meng et al. 2024</a>)</span>, further reduces the dependence on an explicit reference model while keeping the basic preference-learning structure. More recently, GRPO, or Group Relative Policy Optimization <span class="citation" data-cites="shaoDeepSeekMathPushingLimits2024">(<a href="#ref-shaoDeepSeekMathPushingLimits2024" role="doc-biblioref">Shao et al. 2024</a>)</span>, has attracted attention in settings where relative comparisons across multiple candidates are more natural than scalar reward modeling, especially in reasoning-focused training.</p>
 <p>These methods are better understood not as rejections of PPO, but as simpler reformulations of the same alignment goal. All of them aim to move the model distribution toward outputs preferred by humans while limiting excessive drift from a reference behavior. The main difference is procedural. PPO approaches this through online reinforcement learning with controlled policy updates. DPO, KTO, IPO, ORPO, SimPO, and related methods instead replace much of that machinery with offline or more direct objectives defined on preference data.</p>
 <p>As alignment workloads scale to larger models, these methods become increasingly attractive because they preserve the core preference-learning structure of RLHF while avoiding much of the overhead associated with live sampling, critic training, and reward-model optimization. In that sense, they extend the same line of work: not by rejecting PPO, but by asking whether a similar alignment objective can be reached with a cheaper and simpler training procedure.</p>
 
@@ -442,30 +443,30 @@ r(x,y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_{\mathrm{ref}}(y \mid x)}.
 
 </section>
 
-<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
 <div id="ref-azarGeneralTheoreticalParadigm2023" class="csl-entry" role="listitem">
-Azar, Mohammad Gheshlaghi, Mark Rowland, Bilal Piot, Daniel Guo, Daniele Calandriello, Michal Valko, and Rémi Munos. 2023. <span>“A <span>General Theoretical Paradigm</span> to <span>Understand Learning</span> from <span>Human Preferences</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2310.12036">https://arxiv.org/abs/2310.12036</a>.
+Azar, Mohammad Gheshlaghi, Mark Rowland, Bilal Piot, et al. 2023. <em>A <span>General Theoretical Paradigm</span> to <span>Understand Learning</span> from <span>Human Preferences</span></em>. arXiv:2310.12036. arXiv. <a href="https://arxiv.org/abs/2310.12036">https://arxiv.org/abs/2310.12036</a>.
 </div>
 <div id="ref-ethayarajhKTOModelAlignment2024" class="csl-entry" role="listitem">
-Ethayarajh, Kawin, Winnie Xu, Niklas Muennighoff, Dan Jurafsky, and Douwe Kiela. 2024. <span>“<span>KTO</span>: <span>Model Alignment</span> as <span>Prospect Theoretic Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2402.01306">https://arxiv.org/abs/2402.01306</a>.
+Ethayarajh, Kawin, Winnie Xu, Niklas Muennighoff, Dan Jurafsky, and Douwe Kiela. 2024. <em><span>KTO</span>: <span>Model Alignment</span> as <span>Prospect Theoretic Optimization</span></em>. arXiv:2402.01306. arXiv. <a href="https://arxiv.org/abs/2402.01306">https://arxiv.org/abs/2402.01306</a>.
 </div>
 <div id="ref-hongORPOMonolithicPreference2024" class="csl-entry" role="listitem">
-Hong, Jiwoo, Noah Lee, and James Thorne. 2024. <span>“<span>ORPO</span>: <span>Monolithic Preference Optimization</span> Without <span>Reference Model</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2403.07691">https://arxiv.org/abs/2403.07691</a>.
+Hong, Jiwoo, Noah Lee, and James Thorne. 2024. <em><span>ORPO</span>: <span>Monolithic Preference Optimization</span> Without <span>Reference Model</span></em>. arXiv:2403.07691. arXiv. <a href="https://arxiv.org/abs/2403.07691">https://arxiv.org/abs/2403.07691</a>.
 </div>
 <div id="ref-mengSimPOSimplePreference2024" class="csl-entry" role="listitem">
-Meng, Yu, Mengzhou Xia, and Danqi Chen. 2024. <span>“<span>SimPO</span>: <span>Simple Preference Optimization</span> with a <span>Reference-Free Reward</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2405.14734">https://arxiv.org/abs/2405.14734</a>.
+Meng, Yu, Mengzhou Xia, and Danqi Chen. 2024. <em><span>SimPO</span>: <span>Simple Preference Optimization</span> with a <span>Reference-Free Reward</span></em>. arXiv:2405.14734. arXiv. <a href="https://arxiv.org/abs/2405.14734">https://arxiv.org/abs/2405.14734</a>.
 </div>
 <div id="ref-rafailovDirectPreferenceOptimization2024" class="csl-entry" role="listitem">
-Rafailov, Rafael, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. 2024. <span>“Direct <span>Preference Optimization</span>: <span>Your Language Model</span> Is <span>Secretly</span> a <span>Reward Model</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a>.
+Rafailov, Rafael, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. 2024. <em>Direct <span>Preference Optimization</span>: <span>Your Language Model</span> Is <span>Secretly</span> a <span>Reward Model</span></em>. arXiv:2305.18290. arXiv. <a href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a>.
 </div>
 <div id="ref-schulmanTrustRegionPolicy2017" class="csl-entry" role="listitem">
-Schulman, John, Sergey Levine, Philipp Moritz, Michael I. Jordan, and Pieter Abbeel. 2017. <span>“Trust <span>Region Policy Optimization</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1502.05477">https://arxiv.org/abs/1502.05477</a>.
+Schulman, John, Sergey Levine, Philipp Moritz, Michael I. Jordan, and Pieter Abbeel. 2017. <em>Trust <span>Region Policy Optimization</span></em>. arXiv:1502.05477. arXiv. <a href="https://arxiv.org/abs/1502.05477">https://arxiv.org/abs/1502.05477</a>.
 </div>
 <div id="ref-schulmanProximalPolicyOptimization2017" class="csl-entry" role="listitem">
-Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. <span>“Proximal <span>Policy Optimization Algorithms</span>.”</span> arXiv. <a href="https://arxiv.org/abs/1707.06347">https://arxiv.org/abs/1707.06347</a>.
+Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. <em>Proximal <span>Policy Optimization Algorithms</span></em>. arXiv:1707.06347. arXiv. <a href="https://arxiv.org/abs/1707.06347">https://arxiv.org/abs/1707.06347</a>.
 </div>
 <div id="ref-shaoDeepSeekMathPushingLimits2024" class="csl-entry" role="listitem">
-Shao, Zhihong, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, et al. 2024. <span>“<span>DeepSeekMath</span>: <span>Pushing</span> the <span>Limits</span> of <span>Mathematical Reasoning</span> in <span>Open Language Models</span>.”</span> arXiv. <a href="https://arxiv.org/abs/2402.03300">https://arxiv.org/abs/2402.03300</a>.
+Shao, Zhihong, Peiyi Wang, Qihao Zhu, et al. 2024. <em><span>DeepSeekMath</span>: <span>Pushing</span> the <span>Limits</span> of <span>Mathematical Reasoning</span> in <span>Open Language Models</span></em>. arXiv:2402.03300. arXiv. <a href="https://arxiv.org/abs/2402.03300">https://arxiv.org/abs/2402.03300</a>.
 </div>
 </div></section></div></main> <!-- /main -->
 <script>
