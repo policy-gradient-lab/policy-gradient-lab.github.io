@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="dcterms.date" content="2026-02-28">
+<meta name="description" content="An introduction to the policy gradient theorem and why it matters for reinforcement learning, RLHF, and modern LLM alignment.">
 
 <title>LLM Alignment Series: The Policy Gradient Theorem – Policy Gradient Lab</title>
 <style>
@@ -62,7 +63,7 @@ div.csl-indent {
 <link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../../../site_libs/bootstrap/bootstrap-74bb0996473244b57e46c769dcf11b7a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="../../../site_libs/bootstrap/bootstrap-86653f2871ec96155cf3b11ff1f96cfe.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -91,6 +92,14 @@ div.csl-indent {
   }
 }</script>
 <meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
+<meta name="description" content="An introduction to the policy gradient theorem and why it matters for reinforcement learning, RLHF, and modern LLM alignment.">
+<meta property="og:title" content="LLM Alignment Series: The Policy Gradient Theorem – Policy Gradient Lab">
+<meta property="og:description" content="An introduction to the policy gradient theorem and why it matters for reinforcement learning, RLHF, and modern LLM alignment.">
+<meta property="og:url" content="?meta:url">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LLM Alignment Series: The Policy Gradient Theorem – Policy Gradient Lab">
+<meta name="twitter:description" content="An introduction to the policy gradient theorem and why it matters for reinforcement learning, RLHF, and modern LLM alignment.">
 
   <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
   <script>document.addEventListener("DOMContentLoaded", function () {
@@ -164,30 +173,12 @@ window.Quarto = {
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content">
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">LLM Alignment Series: The Policy Gradient Theorem</h1></header>
 
-<header id="title-block-header" class="quarto-title-block default">
-<div class="quarto-title">
-<h1 class="title">LLM Alignment Series: The Policy Gradient Theorem</h1>
-</div>
+<header id="title-block-header">
 
 
-
-<div class="quarto-title-meta">
-
-    
-    <div>
-    <div class="quarto-title-meta-heading">Published</div>
-    <div class="quarto-title-meta-contents">
-      <p class="date">February 28, 2026</p>
-    </div>
-  </div>
-  
-    
-  </div>
-  
-
-
+<p class="date">2026-02-28</p>
 </header>
 
 <nav id="TOC" role="doc-toc">
