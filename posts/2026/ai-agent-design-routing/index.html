@@ -209,15 +209,14 @@ window.Quarto = {
   <li><a href="#task-contract-layer" id="toc-task-contract-layer"><span class="header-section-number">3.3</span> Task Contract Layer</a></li>
   </ul></li>
   <li><a href="#why-policy-should-not-create-tasks" id="toc-why-policy-should-not-create-tasks"><span class="header-section-number">4</span> Why Policy Should Not Create Tasks</a></li>
-  <li><a href="#what-the-agent-builder-does" id="toc-what-the-agent-builder-does"><span class="header-section-number">5</span> What the Agent Builder Does</a></li>
-  <li><a href="#task-contracts" id="toc-task-contracts"><span class="header-section-number">6</span> Task Contracts</a></li>
-  <li><a href="#design-patterns" id="toc-design-patterns"><span class="header-section-number">7</span> Design Patterns</a>
+  <li><a href="#task-contracts" id="toc-task-contracts"><span class="header-section-number">5</span> Task Contracts</a></li>
+  <li><a href="#design-patterns" id="toc-design-patterns"><span class="header-section-number">6</span> Design Patterns</a>
   <ul>
-  <li><a href="#routing" id="toc-routing"><span class="header-section-number">7.1</span> Routing</a></li>
-  <li><a href="#factory" id="toc-factory"><span class="header-section-number">7.2</span> Factory</a></li>
-  <li><a href="#registry" id="toc-registry"><span class="header-section-number">7.3</span> Registry</a></li>
-  <li><a href="#runner" id="toc-runner"><span class="header-section-number">7.4</span> Runner</a></li>
-  <li><a href="#runtime" id="toc-runtime"><span class="header-section-number">7.5</span> Runtime</a></li>
+  <li><a href="#routing" id="toc-routing"><span class="header-section-number">6.1</span> Routing</a></li>
+  <li><a href="#factory" id="toc-factory"><span class="header-section-number">6.2</span> Factory</a></li>
+  <li><a href="#registry" id="toc-registry"><span class="header-section-number">6.3</span> Registry</a></li>
+  <li><a href="#runner" id="toc-runner"><span class="header-section-number">6.4</span> Runner</a></li>
+  <li><a href="#runtime" id="toc-runtime"><span class="header-section-number">6.5</span> Runtime</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -260,17 +259,13 @@ k = f_{\text{route}}(r),
 </section>
 <section id="why-policy-should-not-create-tasks" class="level2" data-number="4">
 <h2 data-number="4" class="anchored" data-anchor-id="why-policy-should-not-create-tasks"><span class="header-section-number">4</span> Why Policy Should Not Create Tasks</h2>
-<p>A common design error is to allow the policy layer to directly instantiate tasks. This conflates soft decision logic with hard execution semantics.</p>
-<p>Prompt-based logic is inherently unstable. It evolves with changes in role descriptions, tool definitions, and orchestration heuristics. In contrast, execution semantics require determinism. Properties such as background execution, isolation, lifecycle transitions, and persistence must be governed by code.</p>
-<p>If these concerns are coupled, both layers become difficult to maintain. Policy should influence routing decisions, but it should not replace routing logic.</p>
+<p>A common design error is to allow the policy layer to instantiate tasks directly. This blurs the boundary between soft decision logic and hard execution semantics.</p>
+<p>The distinction matters because prompt-based logic is inherently unstable. It changes as role descriptions, tool definitions, and orchestration heuristics are revised. Execution semantics, by contrast, should remain deterministic. Decisions such as whether work runs in the background, whether isolation is required, how lifecycle transitions are handled, and how outputs are persisted must be governed by code rather than prompt wording.</p>
+<p>Once these concerns are mixed, both layers become harder to maintain. Small prompt edits can unintentionally alter runtime behavior, while execution rules become difficult to reason about and enforce. For this reason, policy should shape routing decisions, but it should not replace routing logic.</p>
+<p>This separation also clarifies the role of the agent builder. In practice, the builder is not merely a construction utility. It validates requests, resolves constraints, selects execution modes, assembles runtime parameters, and creates task contracts. Architecturally, it is best understood as a combination of a router and a factory, operating at the boundary between model-generated intent and system-level execution.</p>
 </section>
-<section id="what-the-agent-builder-does" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="what-the-agent-builder-does"><span class="header-section-number">5</span> What the Agent Builder Does</h2>
-<p>The component often referred to as the agent builder performs multiple roles simultaneously. It validates requests, resolves constraints, selects execution modes, assembles parameters, and constructs task contracts.</p>
-<p>This functionality can be interpreted as a composition of a routing function and a factory. The builder operates precisely at the boundary between model-generated intent and system-level execution.</p>
-</section>
-<section id="task-contracts" class="level2" data-number="6">
-<h2 data-number="6" class="anchored" data-anchor-id="task-contracts"><span class="header-section-number">6</span> Task Contracts</h2>
+<section id="task-contracts" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="task-contracts"><span class="header-section-number">5</span> Task Contracts</h2>
 <p>The task contract is a central abstraction in multi-agent systems. Without it, execution remains implicit and difficult to control. With it, work becomes a first-class object that can be inspected, stored, and managed.</p>
 <p>A well-defined task contract answers several questions: the type of the task, its current state, its output location, and whether it can be resumed or terminated. This explicit representation distinguishes robust runtimes from ad hoc orchestration systems.</p>
 <p>The following example illustrates a minimal contract structure.</p>
@@ -322,12 +317,12 @@ k = f_{\text{route}}(r),
 <span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Although the exact fields may vary, the key idea is that execution is represented explicitly rather than embedded in prompt flow.</p>
 </section>
-<section id="design-patterns" class="level2" data-number="7">
-<h2 data-number="7" class="anchored" data-anchor-id="design-patterns"><span class="header-section-number">7</span> Design Patterns</h2>
+<section id="design-patterns" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="design-patterns"><span class="header-section-number">6</span> Design Patterns</h2>
 <p>The architecture can be understood as a composition of several classical software design patterns. The strategy pattern governs the selection of execution modes, where different task kinds correspond to different execution strategies. The factory pattern centralizes task creation, ensuring consistent construction of runtime objects. The builder pattern appears in the incremental assembly of execution parameters, including worker type, prompt, and permissions. The state machine pattern captures lifecycle transitions such as pending, running, and completed states. Finally, the registry pattern provides persistent storage and indexing for tasks. Together, these patterns create a coherent and extensible runtime structure.</p>
 <p>The following skeleton makes the separation of responsibilities explicit.</p>
-<section id="routing" class="level3" data-number="7.1">
-<h3 data-number="7.1" class="anchored" data-anchor-id="routing"><span class="header-section-number">7.1</span> Routing</h3>
+<section id="routing" class="level3" data-number="6.1">
+<h3 data-number="6.1" class="anchored" data-anchor-id="routing"><span class="header-section-number">6.1</span> Routing</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> dataclasses <span class="im">import</span> dataclass</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> typing <span class="im">import</span> Optional</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -355,8 +350,8 @@ k = f_{\text{route}}(r),
 <span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> TaskKind.LOCAL_FOREGROUND</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="factory" class="level3" data-number="7.2">
-<h3 data-number="7.2" class="anchored" data-anchor-id="factory"><span class="header-section-number">7.2</span> Factory</h3>
+<section id="factory" class="level3" data-number="6.2">
+<h3 data-number="6.2" class="anchored" data-anchor-id="factory"><span class="header-section-number">6.2</span> Factory</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TaskFactory:</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> create(<span class="va">self</span>, request: DelegationRequest) <span class="op">-&gt;</span> Task:</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>        kind <span class="op">=</span> TaskRouter().route(request)</span>
@@ -366,8 +361,8 @@ k = f_{\text{route}}(r),
 <span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            prompt<span class="op">=</span>request.prompt,</span>
 <span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="registry" class="level3" data-number="7.3">
-<h3 data-number="7.3" class="anchored" data-anchor-id="registry"><span class="header-section-number">7.3</span> Registry</h3>
+<section id="registry" class="level3" data-number="6.3">
+<h3 data-number="6.3" class="anchored" data-anchor-id="registry"><span class="header-section-number">6.3</span> Registry</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TaskRegistry:</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>._tasks: <span class="bu">dict</span>[<span class="bu">str</span>, Task] <span class="op">=</span> {}</span>
@@ -387,8 +382,8 @@ k = f_{\text{route}}(r),
 <span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="bu">all</span>(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[Task]:</span>
 <span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">list</span>(<span class="va">self</span>._tasks.values())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="runner" class="level3" data-number="7.4">
-<h3 data-number="7.4" class="anchored" data-anchor-id="runner"><span class="header-section-number">7.4</span> Runner</h3>
+<section id="runner" class="level3" data-number="6.4">
+<h3 data-number="6.4" class="anchored" data-anchor-id="runner"><span class="header-section-number">6.4</span> Runner</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> TaskRunner:</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> run(<span class="va">self</span>, task: Task) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        task.status <span class="op">=</span> TaskStatus.RUNNING</span>
@@ -422,8 +417,8 @@ k = f_{\text{route}}(r),
 <span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> _run_foreground(<span class="va">self</span>, task: Task) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
 <span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>        <span class="cf">pass</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="runtime" class="level3" data-number="7.5">
-<h3 data-number="7.5" class="anchored" data-anchor-id="runtime"><span class="header-section-number">7.5</span> Runtime</h3>
+<section id="runtime" class="level3" data-number="6.5">
+<h3 data-number="6.5" class="anchored" data-anchor-id="runtime"><span class="header-section-number">6.5</span> Runtime</h3>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> AgentRuntime:</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.factory <span class="op">=</span> TaskFactory()</span>
