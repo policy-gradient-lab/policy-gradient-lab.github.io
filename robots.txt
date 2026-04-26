@@ -1,1 +1,4 @@
+User-agent: *
+Allow: /
+
 Sitemap: https://policy-gradient-lab.github.io/sitemap.xml
