@@ -2,38 +2,42 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://policy-gradient-lab.github.io/</loc>
-    <lastmod>2026-04-26T19:18:10.937045+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:08.767878+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/agentic-ai-series-swe-agent/</loc>
-    <lastmod>2026-04-26T19:18:06.841042+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:04.681882+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/agentic-ai-series-swe-bench/</loc>
-    <lastmod>2026-04-26T19:18:10.700045+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:03.838884+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/ai-agent-design-routing/</loc>
-    <lastmod>2026-04-26T19:18:10.067044+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:05.295882+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-dpo/</loc>
-    <lastmod>2026-04-26T19:18:09.592044+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:07.943878+00:00</lastmod>
+  </url>
+  <url>
+    <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-kto/</loc>
+    <lastmod>2026-05-25T04:27:00.852887+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-policy-gradient-theorem/</loc>
-    <lastmod>2026-04-26T19:18:07.986042+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:06.089880+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-ppo/</loc>
-    <lastmod>2026-04-26T19:18:04.296040+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:07.060879+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-trpo/</loc>
-    <lastmod>2026-04-26T19:18:08.860043+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:03.079885+00:00</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/openclaw-architecture/</loc>
-    <lastmod>2026-04-26T19:18:05.680041+00:00</lastmod>
+    <lastmod>2026-05-25T04:27:02.068886+00:00</lastmod>
   </url>
 </urlset>

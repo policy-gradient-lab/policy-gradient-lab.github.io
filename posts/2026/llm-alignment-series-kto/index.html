@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-05-23">
+<meta name="description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
+
+<title>KTO: The Inductive Bias Was Doing the Work All Along – Policy Gradient Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-ae5fd912300427f0318a74b3c657febc.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
+<meta name="description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
+<meta property="og:title" content="KTO: The Inductive Bias Was Doing the Work All Along – Policy Gradient Lab">
+<meta property="og:description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="KTO: The Inductive Bias Was Doing the Work All Along – Policy Gradient Lab">
+<meta name="twitter:description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-kto/">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">KTO: The Inductive Bias Was Doing the Work All Along</h1></header>
+
+<header id="title-block-header">
+
+
+<p class="date">2026-05-23</p>
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#the-shape-every-working-loss-already-had" id="toc-the-shape-every-working-loss-already-had"><span class="header-section-number">1</span> The Shape Every Working Loss Already Had</a></li>
+  <li><a href="#maximizing-utility-instead-of-preference-likelihood" id="toc-maximizing-utility-instead-of-preference-likelihood"><span class="header-section-number">2</span> Maximizing Utility Instead of Preference Likelihood</a>
+  <ul>
+  <li><a href="#why-a-sigmoid-and-why-it-matters-more-than-the-paper-says" id="toc-why-a-sigmoid-and-why-it-matters-more-than-the-paper-says"><span class="header-section-number">2.1</span> Why a Sigmoid, and Why It Matters More Than the Paper Says</a></li>
+  <li><a href="#the-reference-point-is-a-detached-batch-local-kl-estimate" id="toc-the-reference-point-is-a-detached-batch-local-kl-estimate"><span class="header-section-number">2.2</span> The Reference Point Is a Detached, Batch-Local KL Estimate</a></li>
+  <li><a href="#the-gradient-that-decides-which-data-survives" id="toc-the-gradient-that-decides-which-data-survives"><span class="header-section-number">2.3</span> The Gradient That Decides Which Data Survives</a></li>
+  </ul></li>
+  <li><a href="#what-the-experiments-can-and-cannot-show" id="toc-what-the-experiments-can-and-cannot-show"><span class="header-section-number">3</span> What the Experiments Can and Cannot Show</a></li>
+  <li><a href="#preference-likelihood-is-not-utility" id="toc-preference-likelihood-is-not-utility"><span class="header-section-number">4</span> Preference Likelihood Is Not Utility</a></li>
+  <li><a href="#what-kto-settled-and-what-it-merely-relocated" id="toc-what-kto-settled-and-what-it-merely-relocated"><span class="header-section-number">5</span> What KTO Settled, and What It Merely Relocated</a></li>
+  </ul>
+</nav>
+<p>Take a preference dataset — prompt, a better completion, a worse one. Throw away the link between the two completions. Relabel the better one “desirable,” the worse one “undesirable,” and shuffle them into a pile of individual examples. You have just destroyed the structure that Direct Preference Optimization is built to exploit. Train on that pile with KTO and you beat DPO on the data it was designed for <span class="citation" data-cites="ethayarajhKTOModelAlignment2024">(<a href="#ref-ethayarajhKTOModelAlignment2024" role="doc-biblioref">Ethayarajh et al. 2024</a>)</span>.</p>
+<p>That result is stranger than the one the abstract sells. The pitch for KTO is usually about cost: pairwise preferences are expensive to collect, while a thumbs-up or thumbs-down is cheap and already sitting in every product’s logs, so a method that learns from binary signals lowers the price of alignment. True, and useful. But the experiments that carry the paper don’t use cheap binary data — they use the <em>same</em> academic preference sets everyone else uses, with the pairing stripped out. Same information, weaker-looking signal, better model.</p>
+<p>The lesson worth taking is not about data collection. It is that the shape of the loss function — the inductive bias it encodes about how outcomes should be valued — was doing more of the work than the data format ever was. KTO is best read as an argument that alignment is a loss-design problem that has been hiding inside a data-collection problem. Everything below follows that thread, including the places where the paper’s own evidence is thinner than its framing.</p>
+<section id="the-shape-every-working-loss-already-had" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="the-shape-every-working-loss-already-had"><span class="header-section-number">1</span> The Shape Every Working Loss Already Had</h2>
+<p>The paper opens with a reinterpretation before it offers a method, and the reinterpretation is the more durable idea. It looks at the alignment losses that actually work — DPO and the PPO-Clip objective behind RLHF <span class="citation" data-cites="rafailovDirectPreferenceOptimization2024 schulmanProximalPolicyOptimization2017">(<a href="#ref-rafailovDirectPreferenceOptimization2024" role="doc-biblioref">Rafailov et al. 2024</a>; <a href="#ref-schulmanProximalPolicyOptimization2017" role="doc-biblioref">Schulman et al. 2017</a>)</span> — and notices they share a shape lifted, unknowingly, from behavioral economics.</p>
+<p>DPO is the reference point for everything that follows. Its loss compares an <em>implied reward</em> — the log-ratio of the trained policy to a frozen reference model — for a winning completion <span class="math inline">y_w</span> against a losing one <span class="math inline">y_l</span>:</p>
+<p><span class="math display">
+\mathcal{L}_\text{DPO}(\pi_\theta, \pi_\text{ref}) = \mathbb{E}_{x,y_w,y_l \sim D}\left[ -\log \sigma\!\left( \beta \log \frac{\pi_\theta(y_w \mid x)}{\pi_\text{ref}(y_w \mid x)} - \beta \log \frac{\pi_\theta(y_l \mid x)}{\pi_\text{ref}(y_l \mid x)} \right) \right].
+</span></p>
+<p>Flip the sign on that <span class="math inline">-\log\sigma</span> and you get the <em>value function</em> the loss implicitly maximizes: <span class="math inline">\log\sigma</span> of the reward gap. <span class="math inline">\log\sigma</span> is concave and increasing, so each additional nat of margin between winner and loser buys less than the one before. That is diminishing sensitivity to gains away from a reference point — and it is the first of the three properties Kahneman and Tversky’s prospect theory ascribes to human value. The others are a reference point that gains and losses are measured <em>relative</em> to, and loss aversion: losses felt more sharply than equivalent gains. Their value function, fit to people gambling over money, is</p>
+<p><span class="math display">
+v(z; \lambda, \alpha, z_0) = \begin{cases} (z - z_0)^\alpha &amp; z \geq z_0 \\ -\lambda(z_0 - z)^\alpha &amp; z &lt; z_0 \end{cases}
+</span></p>
+<p>with the median person showing <span class="math inline">\alpha = 0.88</span> (concave, risk-averse in gains) and <span class="math inline">\lambda = 2.25</span> (losses weighted 2.25× as heavily). The claim is that DPO’s <span class="math inline">\log\sigma</span>, PPO-Clip’s clipped-and-kinked advantage, and this curve are all instances of one template: measure reward relative to a reference, then bend it through a function that is concave in gains. Bake a human bias into the objective and you get a loss that works.</p>
+<p>The paper names that template a <strong>human-aware loss</strong>, or HALO. Formally, <span class="math inline">f</span> is a HALO if it can be written</p>
+<p><span class="math display">
+f(\pi_\theta, \pi_\text{ref}) = \mathbb{E}_{x,y\sim D}\big[\, a_{x,y}\, v\big(r_\theta(x,y) - \mathbb{E}_{Q}[r_\theta(x,y')]\big)\big] + C_\mathcal{D},
+</span></p>
+<p>where <span class="math inline">r_\theta(x,y) = l(y)\log[\pi_\theta(y\mid x)/\pi_\text{ref}(y\mid x)]</span> is the implied reward measured in nats, <span class="math inline">Q</span> is the distribution that supplies the reference point, <span class="math inline">v</span> is non-decreasing and concave in gains, and <span class="math inline">a_{x,y}\in\{-1,+1\}</span> sets the sign for desirable versus undesirable outputs. DPO and PPO-Clip both fit, under specific choices of <span class="math inline">v</span>, <span class="math inline">Q</span>, and the normalizer <span class="math inline">l</span>. Two popular methods provably don’t: SLiC and conditional-SFT, whose structure would force the reference point to equal <span class="math inline">-\log\pi_\text{ref}(y\mid x)</span>, which a non-uniform reference model cannot satisfy.</p>
+<p>This buys a near-falsifiable prediction. If the HALO shape is what matters, then among existing methods the HALOs should beat the non-HALOs. They do — but the paper is careful about how much that proves: the gap only reaches significance at 13B parameters and above, and up to 7B alignment of any kind barely improves on supervised finetuning. A clean abstraction with deliberately hedged backing is the right way to ship a claim like this.</p>
+<p>One intermediate result here is more provocative than the authors let it be. Take the offline RLHF objective, optimize it with PPO-Clip, and feed it <em>dummy</em> <span class="math inline">+1/-1</span> rewards instead of a learned reward model. This crude thing matches DPO at every scale except 30B, where it falls behind. The paper reads it as evidence that “preference data might not be needed if the inductive bias in the loss function is good enough.”</p>
+<p>I would put a flag on that sentence. A method that breaks at your largest scale and is, by the authors’ own admission, hyperparameter-sensitive and unstable has not shown that reward learning is dispensable — it has shown a suggestive existence proof. The honest framing, which the paper adopts a paragraph later, is that the dummy-reward result is the <em>motivation</em> and KTO is the <em>evidence</em>. Read as motivation, it is fine. Read as the standalone proof the prose briefly implies, it is doing more rhetorical work than the numbers support.</p>
+</section>
+<section id="maximizing-utility-instead-of-preference-likelihood" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="maximizing-utility-instead-of-preference-likelihood"><span class="header-section-number">2</span> Maximizing Utility Instead of Preference Likelihood</h2>
+<p>Here is the conceptual pivot. DPO maximizes the <em>likelihood of a preference</em>: it needs the pair because its loss lives on the gap between two completions. KTO maximizes the <em>utility of each completion on its own</em>, scored against a reference point that stands in for everything else the model might have said. No partner example appears anywhere in the loss:</p>
+<p><span class="math display">
+L_\text{KTO}(\pi_\theta, \pi_\text{ref}) = \mathbb{E}_{x,y\sim D}\big[\lambda_y - v(x,y)\big],
+</span></p>
+<p><span class="math display">
+v(x,y) = \begin{cases} \lambda_D\,\sigma\big(\beta(r_\theta(x,y) - z_0)\big) &amp; y \text{ desirable} \\[4pt] \lambda_U\,\sigma\big(\beta(z_0 - r_\theta(x,y))\big) &amp; y \text{ undesirable} \end{cases}
+</span></p>
+<p>with <span class="math inline">r_\theta(x,y) = \log[\pi_\theta(y\mid x)/\pi_\text{ref}(y\mid x)]</span>. A desirable example wants its reward above the reference point <span class="math inline">z_0</span>; an undesirable one wants it below. That is the entire shape.</p>
+<section id="why-a-sigmoid-and-why-it-matters-more-than-the-paper-says" class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="why-a-sigmoid-and-why-it-matters-more-than-the-paper-says"><span class="header-section-number">2.1</span> Why a Sigmoid, and Why It Matters More Than the Paper Says</h3>
+<p>Kahneman and Tversky’s value function uses a power, <span class="math inline">(z-z_0)^\alpha</span>. KTO replaces it with the logistic <span class="math inline">\sigma</span> and justifies the swap in four words: numerical stability. The exponent is awkward to optimize; <span class="math inline">\sigma</span> keeps the qualitative shape — concave in gains, convex in losses — without the instability.</p>
+<p>But the substitution smuggles in something the stability framing undersells. A power function is unbounded: value keeps climbing as the reward grows. The logistic <em>saturates</em>. Once a desirable completion’s reward sits comfortably above <span class="math inline">z_0</span>, <span class="math inline">\sigma</span> flattens and there is almost nothing left to push for. That saturation is not a numerical nicety; it is the exact mechanism the paper’s later theory leans on. Choosing <span class="math inline">\sigma</span> “for stability” quietly imports the behavior of <em>ignoring examples you have already gotten right or that look hopeless</em>. We can watch how load-bearing it is: replace <span class="math inline">\sigma</span> with the identity — a risk-neutral, non-saturating value — and BigBench-Hard collapses from 52.6 to 6.1. The bounded shape, not merely the reference point, is holding the method up.</p>
+</section>
+<section id="the-reference-point-is-a-detached-batch-local-kl-estimate" class="level3" data-number="2.2">
+<h3 data-number="2.2" class="anchored" data-anchor-id="the-reference-point-is-a-detached-batch-local-kl-estimate"><span class="header-section-number">2.2</span> The Reference Point Is a Detached, Batch-Local KL Estimate</h3>
+<p>This is the design choice that separates KTO from “DPO with the pairs deleted,” and the one to read if you read nothing else. The reference point <span class="math inline">z_0</span> is meant to be the KL divergence between policy and reference, <span class="math inline">\mathrm{KL}(\pi_\theta(y'\mid x)\,\|\,\pi_\text{ref}(y'\mid x))</span> — each output judged against the whole cloud of things the model might otherwise generate. Sampling from <span class="math inline">\pi_\theta</span> to compute that is too slow, so the paper estimates it inside each microbatch by deliberately <em>mismatching</em> prompts and completions. With <span class="math inline">j = (i+1)\bmod m</span>:</p>
+<p><span class="math display">
+\hat{z}_0 = \max\!\left(0, \frac{1}{m}\sum_{1 \leq i &lt; m} \log \frac{\pi_\theta(y_j \mid x_i)}{\pi_\text{ref}(y_j \mid x_i)}\right).
+</span></p>
+<p>Three decisions are packed into that line, each defensible. The completions are <em>shuffled</em> because the matched <span class="math inline">(x_i, y_i)</span> pairs were hand-picked to be canonically good or bad, so their rewards run unrepresentatively large; a mismatched <span class="math inline">y_j</span> reads the model’s typical drift more honestly. The <span class="math inline">\max(0,\cdot)</span> <em>clamp</em> trades a small upward bias for lower variance. And the estimate is <em>detached from the gradient</em> — the paper does not backpropagate through <span class="math inline">z_0</span>; it exists “purely to control the loss saturation.”</p>
+<p>That last point is what trips people up on a first read. If <span class="math inline">z_0</span> is not trained, what is it doing? It sets <em>where on the sigmoid each example lands</em>. It is an adaptive threshold for “is this completion better or worse than what the policy currently tends to produce,” recomputed every batch as the model drifts. Pin it to a constant 0 and you assert the policy never moves away from the reference — wrong the moment training begins. Removing <span class="math inline">z_0</span> costs 3.6 and 4.0 points on BBH and GSM8K, real but not catastrophic, and the paper explains the modest size: if you ran supervised finetuning on the same data first, the KL gap is already near zero, <span class="math inline">\hat z_0\to 0</span> on its own, and you may as well hard-set it. So <span class="math inline">z_0</span> earns its keep precisely in the regime the paper recommends elsewhere — KTO with no SFT stage in front of it.</p>
+</section>
+<section id="the-gradient-that-decides-which-data-survives" class="level3" data-number="2.3">
+<h3 data-number="2.3" class="anchored" data-anchor-id="the-gradient-that-decides-which-data-survives"><span class="header-section-number">2.3</span> The Gradient That Decides Which Data Survives</h3>
+<p>The mechanism that makes KTO robust — and the same one that makes it fragile — falls out of one derivative. Writing <span class="math inline">z = r_\theta(x,y) - z_0</span>, with <span class="math inline">d(y)=\mp 1</span> for desirable and undesirable examples:</p>
+<p><span class="math display">
+\nabla_\theta L_\text{KTO} = \mathbb{E}_{x,y\sim D}\Big[\, d(y)\,\lambda_y\,\underbrace{\sigma(\beta z)\big(1-\sigma(\beta z)\big)}_{\to\,0\ \text{at both tails}}\,\beta\,\nabla_\theta \log \pi_\theta(y\mid x)\Big].
+</span></p>
+<p>The braced factor is the logistic’s derivative, and it vanishes at both ends. As an example’s implied reward runs to <span class="math inline">+\infty</span> or <span class="math inline">-\infty</span> — the model is already sure it is excellent, or already sure it is garbage — its gradient contribution dies. KTO stops learning from examples it finds very easy or very hard.</p>
+<p>The paper sells this as noise robustness, and the argument is real: a desirable example with a wildly negative reward is often <em>mislabeled</em>, and by skipping it KTO avoids fitting the noise that saturates real human feedback. But the same sentence describes underfitting. A genuinely hard, genuinely correct example — exactly the kind you need to learn the true reward on the tail — also presents as a saturated, high-magnitude reward, and the gradient kills it just as efficiently. The paper concedes this directly: KTO “could end up ignoring data that is hard-to-learn but necessary,” fixable, it suggests, with a smaller <span class="math inline">\beta</span> and more epochs.</p>
+<p>What it never supplies is a way to tell the two apart. “Mislabeled noise” and “hard but essential” look identical at the level of the reward signal, and the only offered lever — widen the high-gradient band by lowering <span class="math inline">\beta</span> — re-admits the noise alongside the signal. So the robustness claim is really conditional: KTO is robust <em>if</em> your tail is mostly noise and underfit <em>if</em> your tail is mostly hard truth, and you cannot know which without sweeping <span class="math inline">\beta</span> and watching the result. That is weaker than “KTO ignores noise,” and more useful — and to its credit the paper’s own guidance on when to prefer KTO arrives at exactly this fork.</p>
+</section>
+</section>
+<section id="what-the-experiments-can-and-cannot-show" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="what-the-experiments-can-and-cannot-show"><span class="header-section-number">3</span> What the Experiments Can and Cannot Show</h2>
+<p>Two results carry the empirical weight. First, KTO matches or beats DPO from 1B to 30B, and for the Llama models KTO <em>alone</em> matches supervised-finetuning-then-DPO while beating DPO alone by a margin that is significant at 7B and 30B. Learning from the weaker signal, it keeps pace with the stronger one.</p>
+<p>Second, a guard against the obvious objection: maybe KTO only wins because its unpaired examples secretly came from clean pairs. To test it, the authors discard up to 90% of the <em>desirable</em> data, pushing the desirable-to-undesirable ratio to 1:10, and KTO on Llama-7B still beats DPO. That rules out one confound and leaves another standing. It shows graceful degradation as desirable data thins, but the undesirable data is left untouched, so what survives is dominated by “what not to do” — it does not isolate that the desirable signal alone suffices. The cleaner cut is the OpenAssistant run, where each prompt’s two completions are written independently rather than ranked against each other: feeding KTO a single completion per prompt cuts training data by 72% and still beats both DPO and the official instruction-tuned Mistral-7B. The imbalance sweep and the genuinely-unpaired run together make the case that no hidden pairing is being exploited. Either one alone would not.</p>
+<p>One number stands apart and goes unexplained. Swapping DPO for KTO on a Zephyr model aligned on UltraFeedback lifts GSM8K by 13.5 points — far beyond any chat winrate gap. The paper offers no mechanism for the magnitude, but its own theory supplies a candidate. Math reasoning has a sharp right/wrong signal, and preference labels over long derivations are precisely where annotators contradict each other. As the next section shows, contradiction is the regime where KTO’s behavior diverges most from DPO’s — so a benchmark with one correct answer and noisy preference labels is exactly where you would predict the widest gap. The paper builds the mechanism and never aims it at the number.</p>
+</section>
+<section id="preference-likelihood-is-not-utility" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="preference-likelihood-is-not-utility"><span class="header-section-number">4</span> Preference Likelihood Is Not Utility</h2>
+<p>The deepest stretch of the paper argues <em>why</em> the weaker signal can win, and it turns on a fact about DPO’s own mathematics. Rafailov and coauthors showed that two reward functions differing only by an input-dependent term, <span class="math inline">r_b(x,y) = r_a(x,y) + h(x)</span>, lie in one equivalence class: they induce the same optimal policy and the same Bradley-Terry preference distribution <span class="citation" data-cites="rafailovDirectPreferenceOptimization2024">(<a href="#ref-rafailovDirectPreferenceOptimization2024" role="doc-biblioref">Rafailov et al. 2024</a>)</span>. KTO adds a twist. Under a logistic value function, two rewards in the same class can induce <em>different distributions of human value</em> — a Taylor expansion shows the values coincide only if <span class="math inline">h(x)=0</span>. Maximizing preference likelihood therefore pins down the policy and the rankings but leaves human <em>utility</em> free to wander by <span class="math inline">h(x)</span>. DPO optimizes the quantity that is invariant to <span class="math inline">h(x)</span>; KTO optimizes the one that is not.</p>
+<p>The evidence offered is the human evaluation, and it is the quietest important table in the paper. With GPT-4 as judge, KTO beats DPO 65.2% to 60.0% — real but modest. With <em>human</em> judges on the same comparisons, the gap widens to 72.9% versus 62.1%. The KTO advantage grows when actual people look, which is what you would expect if KTO optimizes human utility while DPO optimizes a preference proxy that humans and GPT-4 score differently.</p>
+<p>I find the theorem clean and the evidence only loosely fastened to it. The human/GPT-4 discrepancy is <em>consistent</em> with the utility argument, but it does not <em>discriminate</em> that explanation from a more ordinary one: GPT-4-as-judge has documented biases toward length and format that compress differences between models, and DPO aligned without an SFT stage visibly rambles and hallucinates whole conversations — a failure mode people punish harder than an automated judge does. The data fits the utility story and it also fits “humans simply notice DPO’s pathologies more.” The authors write that the theorem “helps explain” the gap rather than claiming it proven, which is the appropriately careful verb.</p>
+<p>The second theoretical result is sharper and, to my eye, the stronger of the two. Suppose the data carries contradictory preferences over the same pair — a majority <span class="math inline">p &gt; 0.5</span> saying <span class="math inline">y_a \succ y_b</span> and the rest saying the reverse. When the reference model is sufficiently unaligned, the optimal DPO policy can end up <em>more</em> likely to emit the minority-preferred <span class="math inline">y_b</span>, while loss-neutral KTO deterministically produces the majority’s <span class="math inline">y_a</span>. Real preference data, pooled across annotators who disagree, is full of exactly this intransitivity. That is the paper’s best account of why KTO matches or beats DPO across noisy public datasets — and why the effect should be largest on something like the math benchmark above.</p>
+</section>
+<section id="what-kto-settled-and-what-it-merely-relocated" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="what-kto-settled-and-what-it-merely-relocated"><span class="header-section-number">5</span> What KTO Settled, and What It Merely Relocated</h2>
+<p>There is a tension running through the method that the paper, to its credit, does not hide. KTO is <em>motivated</em> by human loss aversion — losses loom larger than gains, <span class="math inline">\lambda = 2.25</span>. Yet the empirically best weighting inverts it. After correcting for class imbalance, the recommended setting makes the model slightly <em>gain</em>-sensitive, with <span class="math inline">\frac{\lambda_D n_D}{\lambda_U n_U} \in [1, \tfrac{3}{2}]</span>, because on most benchmarks “producing good outputs is more important than avoiding bad outputs.” The prospect-theory prior turns out to be an initialization you tune <em>away from</em> — except in domains like toxicity, where downside dominates and you tune back toward loss aversion. The human-bias scaffolding hands you a sensible loss shape; it does not hand you the hyperparameters, which the task decides.</p>
+<p>That tension is the whole paper in miniature. KTO settles some genuinely useful things. You can align competitively from a binary signal with no pairs, from 1B to 30B. At sufficient scale you can skip SFT entirely without the response-length explosion that DPO suffers when run on its own. A reference-free, lower-memory variant exists that still beats ORPO <span class="citation" data-cites="hongORPOMonolithicPreference2024">(<a href="#ref-hongORPOMonolithicPreference2024" role="doc-biblioref">Hong et al. 2024</a>)</span>. Each is a concrete capability that did not cleanly exist before.</p>
+<p>But the closing admission — there is no one HALO that is universally superior — is the paper conceding that KTO does not end the search so much as move it. You no longer have to collect clean preference pairs. You do now have to choose <span class="math inline">\beta</span> for the right risk aversion, set <span class="math inline">\lambda_D/\lambda_U</span> against your task’s true asymmetry, decide whether to estimate <span class="math inline">z_0</span> or zero it, and judge whether your data’s noise and intransitivity favor KTO or DPO in the first place. Where binary feedback is the bottleneck, that trade is a clear win. Where it is not, it is a lateral move: a data-collection burden swapped for a loss-design burden, now resting on a practitioner who has to understand their data well enough to pick the inductive bias that fits it. The bias was always doing the work. KTO’s contribution is to make that fact impossible to ignore — and to make it your problem.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-ethayarajhKTOModelAlignment2024" class="csl-entry" role="listitem">
+Ethayarajh, Kawin, Winnie Xu, Niklas Muennighoff, Dan Jurafsky, and Douwe Kiela. 2024. <em><span>KTO</span>: <span>Model Alignment</span> as <span>Prospect Theoretic Optimization</span></em>. arXiv:2402.01306. arXiv. <a href="https://arxiv.org/abs/2402.01306">https://arxiv.org/abs/2402.01306</a>.
+</div>
+<div id="ref-hongORPOMonolithicPreference2024" class="csl-entry" role="listitem">
+Hong, Jiwoo, Noah Lee, and James Thorne. 2024. <em><span>ORPO</span>: <span>Monolithic Preference Optimization</span> Without <span>Reference Model</span></em>. arXiv:2403.07691. arXiv. <a href="https://arxiv.org/abs/2403.07691">https://arxiv.org/abs/2403.07691</a>.
+</div>
+<div id="ref-rafailovDirectPreferenceOptimization2024" class="csl-entry" role="listitem">
+Rafailov, Rafael, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. 2024. <em>Direct <span>Preference Optimization</span>: <span>Your Language Model</span> Is <span>Secretly</span> a <span>Reward Model</span></em>. arXiv:2305.18290. arXiv. <a href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a>.
+</div>
+<div id="ref-schulmanProximalPolicyOptimization2017" class="csl-entry" role="listitem">
+Schulman, John, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. <em>Proximal <span>Policy Optimization Algorithms</span></em>. arXiv:1707.06347. arXiv. <a href="https://arxiv.org/abs/1707.06347">https://arxiv.org/abs/1707.06347</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/policy-gradient-lab\.github\.io");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
