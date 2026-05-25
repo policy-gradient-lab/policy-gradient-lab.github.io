@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-05-24">
+<meta name="description" content="Recasting distillation as imitation learning splits it into two knobs prior methods had fused: which sequences the student trains on, and which divergence it minimizes.">
+
+<title>On-Policy Distillation: The Two Knobs Hidden Inside Knowledge Distillation – Policy Gradient Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-ae5fd912300427f0318a74b3c657febc.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
+<meta name="description" content="Recasting distillation as imitation learning splits it into two knobs prior methods had fused: which sequences the student trains on, and which divergence it minimizes.">
+<meta property="og:title" content="On-Policy Distillation: The Two Knobs Hidden Inside Knowledge Distillation – Policy Gradient Lab">
+<meta property="og:description" content="Recasting distillation as imitation learning splits it into two knobs prior methods had fused: which sequences the student trains on, and which divergence it minimizes.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="On-Policy Distillation: The Two Knobs Hidden Inside Knowledge Distillation – Policy Gradient Lab">
+<meta name="twitter:description" content="Recasting distillation as imitation learning splits it into two knobs prior methods had fused: which sequences the student trains on, and which divergence it minimizes.">
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/on-policy-distillation/">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">On-Policy Distillation: The Two Knobs Hidden Inside Knowledge Distillation</h1></header>
+
+<header id="title-block-header">
+
+
+<p class="date">2026-05-24</p>
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#the-covariate-shift-that-supervised-distillation-walks-into" id="toc-the-covariate-shift-that-supervised-distillation-walks-into"><span class="header-section-number">1</span> The Covariate Shift That Supervised Distillation Walks Into</a></li>
+  <li><a href="#why-on-policy-data-didnt-need-reinforcement-learning-machinery" id="toc-why-on-policy-data-didnt-need-reinforcement-learning-machinery"><span class="header-section-number">2</span> Why On-Policy Data Didn’t Need Reinforcement-Learning Machinery</a></li>
+  <li><a href="#one-objective-two-knobs" id="toc-one-objective-two-knobs"><span class="header-section-number">3</span> One Objective, Two Knobs</a>
+  <ul>
+  <li><a href="#what-the-data-knob-controls" id="toc-what-the-data-knob-controls"><span class="header-section-number">3.1</span> What the Data Knob Controls</a></li>
+  <li><a href="#what-the-divergence-knob-controls" id="toc-what-the-divergence-knob-controls"><span class="header-section-number">3.2</span> What the Divergence Knob Controls</a></li>
+  </ul></li>
+  <li><a href="#swapping-the-regularizer-in-rl-fine-tuning" id="toc-swapping-the-regularizer-in-rl-fine-tuning"><span class="header-section-number">4</span> Swapping the Regularizer in RL Fine-Tuning</a></li>
+  <li><a href="#two-things-the-paper-leaves-open" id="toc-two-things-the-paper-leaves-open"><span class="header-section-number">5</span> Two Things the Paper Leaves Open</a></li>
+  </ul>
+</nav>
+<p>Distilling a small autoregressive model from a big one had been treated as a regression problem: collect a dataset, have the teacher label it, train the student to match. GKD recasts that setup as imitation learning with an interactive expert <span class="citation" data-cites="agarwalOnPolicyDistillationLanguage2023b">(<a href="#ref-agarwalOnPolicyDistillationLanguage2023b" role="doc-biblioref">Agarwal et al. 2023</a>)</span>. The teacher isn’t a fixed answer key; it’s an expert you can query on whatever states the student wanders into. Once that relabeling lands, a prescription follows almost mechanically — train the student on the sequences the student itself generates, and ask the teacher to grade them token by token — and the vague complaint about “distribution mismatch” sharpens into a named, well-studied phenomenon: covariate shift.</p>
+<p>That reframing does something structural: it reveals that “knowledge distillation,” as practiced, had quietly bundled two independent choices into one. The first is <em>which sequences</em> the student trains on — a fixed dataset, the teacher’s samples, or the student’s own outputs. The second is <em>which divergence</em> measures the gap between student and teacher at each token — forward KL, reverse KL, or something between. GKD pulls these apart into two knobs, a data fraction and a divergence, and a large part of the paper is simply a careful study of what each knob does on its own. Reading it this way, the experiments stop looking like a leaderboard and start looking like a map: this knob fixes the train/inference gap and behaves consistently across tasks; that knob trades quality against diversity and only matters once you decode by sampling.</p>
+<section id="the-covariate-shift-that-supervised-distillation-walks-into" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="the-covariate-shift-that-supervised-distillation-walks-into"><span class="header-section-number">1</span> The Covariate Shift That Supervised Distillation Walks Into</h2>
+<p>Start with the failure the method is built to fix, because it is sharper than “the training and test distributions differ.” Supervised distillation trains the student to match the teacher on a fixed set of sequences — either ground-truth targets or sequences the teacher generated. In imitation-learning terms that is behavioral cloning: the student learns the expert’s action (the teacher’s next-token distribution) on states drawn from the <em>expert’s</em> trajectory, never on the states the student will produce when it runs on its own.</p>
+<p>For an autoregressive model that gap compounds. Every token the student emits becomes part of the context conditioning the next token. Make one off-distribution choice and the prefix <span class="math inline">y_{&lt;n}</span> is now something the training data never showed — so the next prediction is worse, which corrupts the prefix further, and the error cascades down the sequence. This is exposure bias, and the imitation-learning literature has both a name for its cause and a recipe for its cure: the cause is covariate shift, and the cure is to collect data under the learner’s own policy and have the expert relabel it. That recipe is the on-policy imitation approach the paper draws on; on-policy KD applies it with the teacher’s full token distribution standing in for the expert’s correction.</p>
+<p>What the interactive expert provides over a frozen teacher-generated dataset is precision about <em>where</em> the correction lands. A static dataset of teacher samples corrects the student on states the teacher visits. An interactive teacher corrects the student on the states the <em>student</em> visits — exactly the off-distribution prefixes that drive the cascade. That difference is what makes “interactive expert” more than a vocabulary upgrade: it changes which data the gradient sees.</p>
+</section>
+<section id="why-on-policy-data-didnt-need-reinforcement-learning-machinery" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="why-on-policy-data-didnt-need-reinforcement-learning-machinery"><span class="header-section-number">2</span> Why On-Policy Data Didn’t Need Reinforcement-Learning Machinery</h2>
+<p>On-policy imitation was standard in robotics and RL well before this paper, which raises a natural question: why hadn’t it been pointed at language-model distillation? Part of the answer is a reasonable-looking assumption — that learning on self-generated sequences requires RL machinery, with sampling inside the objective, gradients pushed back through a stochastic policy, and the variance and instability that come with it.</p>
+<p>Two pieces make the simpler regime possible, and the first is what the teacher provides as a label. The per-sequence divergence GKD minimizes is a length-normalized average of per-token divergences:</p>
+<p><span class="math display">
+\mathcal{D}\big(p_T \,\|\, p_S^\theta\big)(y|x) := \frac{1}{L_y} \sum_{n=1}^{L_y} \mathcal{D}\big(p_T(\cdot|y_{&lt;n},x) \,\|\, p_S^\theta(\cdot|y_{&lt;n}, x)\big)
+</span></p>
+<p>At every one of the <span class="math inline">L_y</span> positions the label is the teacher’s <em>entire</em> next-token distribution over the vocabulary, not a single sampled token and not a scalar reward arriving only at the end of the sequence. That density is the lever. RL on language models is hard in large part because the reward is sparse and scalar, which forces high-variance credit assignment back across the whole generation; here the teacher delivers a full supervised target at each step, so there is nothing sparse to propagate.</p>
+<p>The second piece is the on-policy loss itself, which shows why the RL machinery can be set aside:</p>
+<p><span class="math display">
+L_{OD}(\theta) := \mathbb{E}_{x \sim X} \Big[\,\mathbb{E}_{y \sim p_S(\cdot|x)} \big[\,\mathcal{D}_{KL}\big(p_T \,\|\, p_S^\theta\big)(y|x)\big] \Big]
+</span></p>
+<p>The form matters, so it’s worth tracing where the gradient actually goes. The student samples a sequence <span class="math inline">y</span> from its own current distribution <span class="math inline">p_S(\cdot|x)</span>, but the method does <em>not</em> differentiate through that sampling step — the sampled sequence is frozen and treated as data, and only the inner divergence between teacher and student token distributions is differentiated. That single choice keeps the update structurally identical to ordinary supervised distillation; the only thing that changed is which sequences populate the batch. Because the teacher hands over a dense per-token distribution as the label, there is no scalar reward and no policy-gradient estimator to stabilize. The reason this is written with a stop-gradient rather than as full sequence-level optimization is precisely to stay in supervised-training territory while still training on on-policy data.</p>
+<p>That same stop-gradient is what separates GKD from the concurrent MiniLLM, which frames distillation as RL and <em>does</em> backpropagate through sampling via policy gradient — and consequently needs a set of stabilizers for high variance, reward hacking, and generation-length bias. GKD trades that machinery for the simpler regime, at the cost of one honest subtlety the source’s own author comments flag: with the stop-gradient in place, the objective being minimized is not the sequence-level divergence (the sampling distribution that the gradient ignores does depend on <span class="math inline">\theta</span>). What is minimized is the teacher–student token divergence <em>averaged over the student’s current output distribution</em>, treated as data and refreshed each step. It is a moving target optimized as if it were stationary within a step — a pragmatic relaxation that the results bear out, but not the same object the name might suggest.</p>
+</section>
+<section id="one-objective-two-knobs" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="one-objective-two-knobs"><span class="header-section-number">3</span> One Objective, Two Knobs</h2>
+<p>The generalization that gives the paper its name writes both design choices into a single line:</p>
+<p><span class="math display">
+L_\mathrm{GKD}(\theta) := (1 - \lambda)\, \mathbb{E}_{(x, y) \sim (X, Y)} \big[\, \mathcal{D}(p_T \| p_S^\theta)(y|x) \big] + \lambda\, \mathbb{E}_{x\sim X} \Big[\,\mathbb{E}_{y \sim p_S(\cdot|x)} \big[\,\mathcal{D}(p_T \| p_S^\theta)(y|x)\big]\Big]
+</span></p>
+<p>The point of writing it this way is that the two terms are the <em>same</em> divergence evaluated on two different data sources — fixed sequences on the left, student-generated sequences on the right — mixed by <span class="math inline">\lambda</span>, while the divergence <span class="math inline">\mathcal{D}</span> is a free choice applied identically to both. That makes the data axis (<span class="math inline">\lambda</span>) and the loss axis (<span class="math inline">\mathcal{D}</span>) genuinely independent. Supervised KD is <span class="math inline">(\lambda{=}0, \text{forward KL})</span>. On-policy KD is <span class="math inline">(\lambda{=}1, \text{forward KL})</span>. ImitKD turns out to be forward KL with a <span class="math inline">\lambda</span> schedule sitting around the middle; f-distill is mixed data with total-variation distance. Every prior method is a single point in this plane, and each had fixed one axis while varying the other.</p>
+<p>Separating the axes is what lets the experiments say something the prior framing could not: that the two knobs carry different kinds of information. The rest of the paper is, in effect, turning each knob with the other held fixed and reporting what moves.</p>
+<section id="what-the-data-knob-controls" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="what-the-data-knob-controls"><span class="header-section-number">3.1</span> What the Data Knob Controls</h3>
+<p>Across summarization (XSum), translation (WMT en→de), and grade-school math (GSM8K), and across student sizes from 77M to 800M against a ~3B T5-XL teacher, the consistent pattern is that raising <span class="math inline">\lambda</span> toward 1 helps. Purely on-policy and mixed variants outperform the supervised-only variants regardless of which divergence is used. Averaged across student sizes, on-policy GKD’s improvement over the starting student is roughly <span class="math inline">2.1\times</span> the improvement that baseline KD methods achieve on summarization, <span class="math inline">1.7\times</span> on translation, and <span class="math inline">1.9\times</span> on reasoning. The data knob behaves consistently from task to task in a way the divergence knob does not.</p>
+<p>Two of the data-knob results are worth reading precisely, because their headline phrasing can carry more than the experiment establishes. The most quotable is that a T5 model roughly <span class="math inline">7000\times</span> smaller than PaLM-540B surpasses PaLM’s few-shot performance on XSum. What that comparison establishes is narrow: XSum is a specific abstractive-summarization target, and a small model fine-tuned and then distilled on it can beat a much larger model that gets zero task adaptation, because the comparison sets specialization against few-shot generalization. It speaks to the value of task-specific distillation in general; the GKD-specific evidence is the like-for-like comparison, on-policy GKD against supervised KD, SeqKD, ImitKD, and f-distill at the same student size and teacher.</p>
+<p>The data-efficiency result is the sharper one. On-policy GKD trained on 5% of XSum, using no ground-truth summaries, outperforms supervised KD and ImitKD trained on the full dataset with ground truth. The mechanism behind it is specific: on-policy KD needs only input prompts, because the teacher supplies the labels on the student’s own outputs, so the comparison is really <em>teacher token-level supervision on on-policy states</em> against <em>ground-truth supervision on off-policy states</em>. The result shows the former carries more signal here — which is a statement about where supervision should be applied, and one that leans on the teacher being strong enough for its per-token distributions to be a richer target than a single reference summary.</p>
+<p>GSM8K adds a detail more informative than it first appears: performance improves with the on-policy fraction only once at least a quarter of the data is student-generated. A threshold rather than a smooth ramp is itself a clue about the mechanism. Covariate-shift correction is a distributional effect — it engages only when the student’s own states make up enough of the batch to shift the training distribution. A small trickle of on-policy samples diluted in a mostly-fixed dataset doesn’t move the distribution the gradient sees, so the student remains effectively behaviorally cloned; past the threshold, the student’s own state distribution starts to define what gets trained on, and the corrective loop takes hold.</p>
+</section>
+<section id="what-the-divergence-knob-controls" class="level3" data-number="3.2">
+<h3 data-number="3.2" class="anchored" data-anchor-id="what-the-divergence-knob-controls"><span class="header-section-number">3.2</span> What the Divergence Knob Controls</h3>
+<p>The divergence choice looks task-dependent and a little mysterious until it is lined up against the decoding strategy, at which point it resolves into a single mechanism.</p>
+<p>That mechanism is capacity mismatch. A small student cannot exactly reproduce a 3B teacher’s token distribution, so the only question is <em>how</em> to be wrong, and the two KLs answer it differently because they are asymmetric in opposite directions. Forward KL, <span class="math inline">\sum_c p_T(c)\log\frac{p_T(c)}{p_S(c)}</span>, is weighted by the teacher: wherever the teacher places mass, the student is heavily penalized for placing little, so a low-capacity student spreads its limited budget to cover the teacher’s whole support — mode-covering, which means smearing probability onto tokens the teacher itself finds unlikely. Reverse KL swaps the roles: weighted by the <em>student</em>, it punishes the student for putting mass where the teacher has little, so the student retreats onto the teacher’s high-probability tokens and abandons the rest — mode-seeking, which buys per-token quality at the cost of diversity.</p>
+<p>Whether that difference is ever felt depends on how you decode. Under temperature sampling you draw from the spread-out tail, so a mode-covering student periodically emits the low-quality tokens it smeared mass onto, and quality drops — mode-seeking divergences (reverse KL, JSD(0.9)) pull ahead. Under greedy decoding you only ever emit the argmax, the badly-allocated tail is never sampled, and the choice of divergence barely affects performance. The interaction is not task magic: the divergence shapes the tail of the distribution, and only sampling-based decoding visits the tail.</p>
+<p>This is also the clearest reason the paper bothers with the generalized Jensen–Shannon divergence rather than only offering the two KLs:</p>
+<p><span class="math display">
+\mathcal{D}_{JSD(\beta)}(P\|Q) = \beta\,\mathcal{D}_{KL}\big(P \,\|\, \beta P + (1-\beta)Q\big) + (1-\beta)\,\mathcal{D}_{KL}\big(Q \,\|\, \beta P + (1-\beta)Q\big)
+</span></p>
+<p>Why this form? The paper notes that JSD<span class="math inline">(\beta)</span> behaves like forward KL as <span class="math inline">\beta\to0</span> and like reverse KL as <span class="math inline">\beta\to1</span>, so the endpoints just recover the two KLs and the value of JSD has to live in its interior. And it does: JSD(0.9) is mostly mode-seeking but still penalized for dropping teacher mass entirely, a blend the two endpoints cannot express. It captures much of reverse KL’s quality benefit under sampling without fully abandoning coverage, and unlike raw KL it stays finite even when student and teacher supports disagree — the disjoint-support situation a weak student tends to create. The interior is useful exactly when the right amount of mode-seeking is somewhere short of “all.”</p>
+</section>
+</section>
+<section id="swapping-the-regularizer-in-rl-fine-tuning" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="swapping-the-regularizer-in-rl-fine-tuning"><span class="header-section-number">4</span> Swapping the Regularizer in RL Fine-Tuning</h2>
+<p>The contribution that is easy to skim past is what happens when on-policy distillation is folded into RL fine-tuning. Because GKD needs only student samples, it drops into an RLHF-style loop:</p>
+<p><span class="math display">
+\mathbb{E}_{x\sim X} \Big[(1-\alpha)\, \underbrace{\mathbb{E}_{y \sim p_S^\theta(\cdot|x)} \left[r(y)\right]}_{\text{RL objective}} - \alpha \underbrace{\mathbb{E}_{y \sim p_S(\cdot|x)} \big[\mathcal{D}(p_T \| p_S^\theta)(y|x)\big]}_{\text{On-policy distillation}} \Big]
+</span></p>
+<p>The structurally interesting part is what the second term regularizes <em>toward</em>. Standard RLHF maximizes reward minus a KL penalty that keeps the model close to its initial supervised checkpoint <span class="citation" data-cites="ouyangTrainingLanguageModels2022">(<a href="#ref-ouyangTrainingLanguageModels2022" role="doc-biblioref">Ouyang et al. 2022</a>)</span>; that penalty is conservative — it can keep the model from drifting, but it cannot add capability. Replacing the anchor with the <em>teacher</em> policy changes the character of the penalty: regularizing toward a stronger model pulls the policy toward a better distribution while the reward term chases the metric. The paper’s related work flags this as “quite different from an optimization perspective” despite looking natural, and the distinction is real — the regularizer has gone from “stay put” to “move toward something better.”</p>
+<p>The motivating target is the alignment tax, the capability erosion RLHF tends to introduce. The XSum experiment is where this is exercised: combining a textual-entailment reward (to suppress hallucination) with on-policy GKD, the model exceeds a self-regularized RLHF baseline on summarization quality and surpasses the teacher on factual consistency. The setup recovers some of both capability and reward rather than trading one for the other, which is the concrete sense in which the regularizer swap is meant to help.</p>
+</section>
+<section id="two-things-the-paper-leaves-open" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="two-things-the-paper-leaves-open"><span class="header-section-number">5</span> Two Things the Paper Leaves Open</h2>
+<p>A neutral reading of the method surfaces two questions the paper does not fully settle, and both are worth stating plainly rather than resolving past the evidence.</p>
+<p>The first is whether “on-policy” is the operative mechanism or a description of something simpler. GKD’s procedure — generate samples from the student, whose quality rises as the student improves, and train on them with teacher labels — sits close to iterated self-training. ReST and the self-play methods also generate their own data and train on the good parts, differing mainly in whether the filter is “match the teacher” or “clear a reward threshold” <span class="citation" data-cites="gulcehreReinforcedSelfTrainingReST2023 chenSelfPlayFineTuningConverts2024">(<a href="#ref-gulcehreReinforcedSelfTrainingReST2023" role="doc-biblioref">Gulcehre et al. 2023</a>; <a href="#ref-chenSelfPlayFineTuningConverts2024" role="doc-biblioref">Chen et al. 2024</a>)</span>. So two explanations fit the same curves: covariate-shift correction in the imitation-learning sense, and the plainer story that the student simply gets more and fresher self-relevant training signal. The experiment that would separate them — holding the data distribution fixed while toggling whether labels come from the teacher’s full distribution versus a hard self-label, and whether on-policy samples are refreshed or frozen — is not run. The self-distillation result narrows the space: with student and teacher sharing architecture and size, so no capacity gap, on-policy GKD still beats supervised KD and the self-distilled student surpasses its teacher. That rules out “the teacher is simply better and on-policy data is incidental,” since the gain appears with no capacity gap at all. It does not, on its own, distinguish the covariate-shift account from the fresh-data account, because both predict that outcome. The honest summary is that on-policy data clearly does real work — the monotone <span class="math inline">\lambda</span> sweeps and the self-distillation result are not artifacts — while the precise mechanism remains an open question the paper’s evidence is consistent with but does not pin down.</p>
+<p>The second open question is cost, which the paper treats briefly. Student sampling adds roughly <span class="math inline">1.8\times</span> to <span class="math inline">2.2\times</span> overhead on GSM8K, and the overhead grows as the student gets larger relative to the teacher — <span class="math inline">1.8\times</span> at a <span class="math inline">38\times</span> size gap (T5-small), rising to <span class="math inline">2.2\times</span> at a <span class="math inline">3.8\times</span> gap (T5-large). The defense offered is a single sentence: if sampling from the student during fine-tuning is too costly, serving that student to users would be too costly as well. That argument compares two cost regimes that behave differently. Serving cost is amortized over a large request volume — the reason to want a small student in the first place — while training cost is paid up front across tens of thousands of steps, each requiring full autoregressive generation (the slow part of inference) plus a teacher forward pass, with no amortization. The two are not interchangeable, and the relationship between them depends on request volume, number of training steps, and student size in ways the one-sentence treatment doesn’t develop. The appendix’s quieter framing is the more load-bearing one: the overhead is under <span class="math inline">2.2\times</span> and may be worth the quality gain, and it nearly vanishes when GKD is combined with RL fine-tuning, since the RL loop already generates from the student and GKD then adds only a teacher inference pass for logits. When on-policy distillation is cheap and when it is not is a practical question the paper opens more than it closes.</p>
+<p>Holding those two open questions alongside the rest leaves a coherent picture. The reframing of distillation as imitation learning is the move that organizes everything; from it follows the prescription to train on the student’s own outputs, the clean factoring into a data knob and a divergence knob, and a usable rule for setting them — push <span class="math inline">\lambda</span> toward 1, then choose the divergence by whether the deployed model will sample or greedy-decode. What that rule does to the underlying distribution, and what it costs to apply, are the threads the paper hands forward.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-agarwalOnPolicyDistillationLanguage2023b" class="csl-entry" role="listitem">
+Agarwal, Rishabh, Nino Vieillard, Yongchao Zhou, et al. 2023. <span>“On-<span>Policy Distillation</span> of <span>Language Models</span>: <span>Learning</span> from <span>Self-Generated Mistakes</span>.”</span> In <em>arXiv.org</em>. Https://arxiv.org/abs/2306.13649v3.
+</div>
+<div id="ref-chenSelfPlayFineTuningConverts2024" class="csl-entry" role="listitem">
+Chen, Zixiang, Yihe Deng, Huizhuo Yuan, Kaixuan Ji, and Quanquan Gu. 2024. <em>Self-<span>Play Fine-Tuning Converts Weak Language Models</span> to <span>Strong Language Models</span></em>. arXiv:2401.01335. arXiv. <a href="https://arxiv.org/abs/2401.01335">https://arxiv.org/abs/2401.01335</a>.
+</div>
+<div id="ref-gulcehreReinforcedSelfTrainingReST2023" class="csl-entry" role="listitem">
+Gulcehre, Caglar, Tom Le Paine, Srivatsan Srinivasan, et al. 2023. <em>Reinforced <span>Self-Training</span> (<span>ReST</span>) for <span>Language Modeling</span></em>. arXiv:2308.08998. arXiv. <a href="https://arxiv.org/abs/2308.08998">https://arxiv.org/abs/2308.08998</a>.
+</div>
+<div id="ref-ouyangTrainingLanguageModels2022" class="csl-entry" role="listitem">
+Ouyang, Long, Jeff Wu, Xu Jiang, et al. 2022. <em>Training Language Models to Follow Instructions with Human Feedback</em>. arXiv:2203.02155. arXiv. <a href="https://arxiv.org/abs/2203.02155">https://arxiv.org/abs/2203.02155</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/policy-gradient-lab\.github\.io");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
