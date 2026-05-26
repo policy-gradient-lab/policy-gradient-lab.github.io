@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-05-25">
+<meta name="description" content="AI feedback ties human feedback. The larger, underplayed finding: the trained reward model both pipelines share is the disposable link.">
+
+<title>LLM Alignment Series: Reinforcement Learning from AI Feedback – Policy Gradient Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-ae5fd912300427f0318a74b3c657febc.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
+<meta name="description" content="AI feedback ties human feedback. The larger, underplayed finding: the trained reward model both pipelines share is the disposable link.">
+<meta property="og:title" content="LLM Alignment Series: Reinforcement Learning from AI Feedback – Policy Gradient Lab">
+<meta property="og:description" content="AI feedback ties human feedback. The larger, underplayed finding: the trained reward model both pipelines share is the disposable link.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LLM Alignment Series: Reinforcement Learning from AI Feedback – Policy Gradient Lab">
+<meta name="twitter:description" content="AI feedback ties human feedback. The larger, underplayed finding: the trained reward model both pipelines share is the disposable link.">
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-rlaif/">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">LLM Alignment Series: Reinforcement Learning from AI Feedback</h1></header>
+
+<header id="title-block-header">
+
+
+<p class="date">2026-05-25</p>
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#one-pipeline-one-swapped-part" id="toc-one-pipeline-one-swapped-part"><span class="header-section-number">1</span> One pipeline, one swapped part</a></li>
+  <li><a href="#comparable-is-partly-a-statement-about-human-noise" id="toc-comparable-is-partly-a-statement-about-human-noise"><span class="header-section-number">2</span> “Comparable” is partly a statement about human noise</a></li>
+  <li><a href="#two-ways-to-turn-an-opinion-into-a-reward" id="toc-two-ways-to-turn-an-opinion-into-a-reward"><span class="header-section-number">3</span> Two ways to turn an opinion into a reward</a></li>
+  <li><a href="#why-throwing-the-reward-model-out-helps" id="toc-why-throwing-the-reward-model-out-helps"><span class="header-section-number">4</span> Why throwing the reward model out helps</a></li>
+  <li><a href="#the-crack-the-paper-half-acknowledges" id="toc-the-crack-the-paper-half-acknowledges"><span class="header-section-number">5</span> The crack the paper half-acknowledges</a></li>
+  <li><a href="#the-negative-results-carry-more-information-than-the-wins" id="toc-the-negative-results-carry-more-information-than-the-wins"><span class="header-section-number">6</span> The negative results carry more information than the wins</a></li>
+  <li><a href="#what-the-cost-argument-buys-and-where-scaling-is-earned" id="toc-what-the-cost-argument-buys-and-where-scaling-is-earned"><span class="header-section-number">7</span> What the cost argument buys, and where “scaling” is earned</a></li>
+  <li><a href="#where-the-framing-outruns-the-evidence" id="toc-where-the-framing-outruns-the-evidence"><span class="header-section-number">8</span> Where the framing outruns the evidence</a></li>
+  <li><a href="#what-the-paper-actually-moved" id="toc-what-the-paper-actually-moved"><span class="header-section-number">9</span> What the paper actually moved</a></li>
+  </ul>
+</nav>
+<p>Google DeepMind’s Reinforcement Learning from AI Feedback (RLAIF) study lands a clean answer to a question about labels: swap the human annotators behind RLHF for an off-the-shelf language model, and across summarization and two dialogue tasks the resulting policy is preferred by humans at statistically indistinguishable rates, with a coin-flip outcome head-to-head <span class="citation" data-cites="leeRLAIFVsRLHF2024">(<a href="#ref-leeRLAIFVsRLHF2024" role="doc-biblioref">Lee et al. 2024</a>)</span>. That is a real result, and it is the smaller of the two findings in the report.</p>
+<p>The larger finding sits a layer down, in a component both pipelines kept without questioning. The trained reward model is the disposable link in the alignment chain. Three results converge on that conclusion: RLAIF matches RLHF while running on a reward model measurably less accurate against human preferences; reward-model accuracy fails to predict which policy you end up with; and direct-RLAIF, the paper’s own strongest method, deletes the reward model outright and beats the version that keeps it. These are not three curiosities but one observation seen from three angles — and the reasons RLAIF can match RLHF turn out to be the same reasons the reward model can be thrown away.</p>
+<section id="one-pipeline-one-swapped-part" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="one-pipeline-one-swapped-part"><span class="header-section-number">1</span> One pipeline, one swapped part</h2>
+<p>The comparison only means something if the two systems differ in exactly one place, and the design is disciplined about this. Both arms start from the same supervised checkpoint, PaLM 2 XS. Both train a reward model on a preference dataset. Both then optimize the same objective with the same algorithm. The single difference is who labeled the preferences — a human, or an instruction-tuned PaLM 2 L asked to pick the better of two candidates.</p>
+<p>The objective they share is the experiment’s control, so it is worth writing out:</p>
+<p><span class="math display">
+J(\theta) = \mathbb{E}_{y\sim\pi_\theta(\cdot\mid x)}\Big[(1-\beta)\,r_\phi(y\mid x) - \beta\,D_{KL}\big(\pi^{RL}_\theta(y\mid x)\,\|\,\pi^{SFT}(y\mid x)\big)\Big]
+</span></p>
+<p>The first term pulls the policy toward whatever the reward model rewards. The KL term leashes it to the supervised policy so it cannot drift into the high-reward, low-quality region where reward hacking lives. Why express the trade-off as the convex blend <span class="math inline">(1-\beta)</span> and <span class="math inline">\beta</span> rather than reward-minus-penalty with a free multiplier? Because tying the two coefficients together bounds the objective: at <span class="math inline">\beta=1</span> you optimize pure imitation, at <span class="math inline">\beta=0</span> pure reward, and every setting in between is a genuine interpolation rather than two knobs that can fight each other. Fixing this objective, <span class="math inline">\beta</span>, and the optimizer across both arms is what licenses the causal reading — any downstream difference is attributable to the reward <em>source</em>, not the recipe. One detail to flag: the optimizer is REINFORCE with a baseline, not PPO. That raises the bar on the human-feedback side rather than lowering it, since a weaker optimizer that still lets AI feedback keep pace makes the parity result more conservative, not less.</p>
+<p>On that footing the headline numbers land where the abstract promises. RLAIF and RLHF beat the supervised baseline 71% and 73% of the time on summarization, 63% and 64% on helpful dialogue, and sit at 50% and 52% against each other. On harmlessness, RLAIF separates from the pack with an 88% harmless rate against RLHF’s 76%.</p>
+</section>
+<section id="comparable-is-partly-a-statement-about-human-noise" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="comparable-is-partly-a-statement-about-human-noise"><span class="header-section-number">2</span> “Comparable” is partly a statement about human noise</h2>
+<p>Before reading parity as a triumph, ask what the ceiling is. The summarization preferences come from a dataset whose human inter-annotator agreement was estimated at 73–77%. Hold that against the best AI labeler’s alignment with human preferences: 78%. The model agrees with a held-out human about as often as humans agree with each other.</p>
+<p>That reframes “comparable.” Two labelers that each match a human roughly three-quarters of the time will, almost mechanically, yield reward signals of similar quality, because the target they chase is itself noisy. When ground truth behaves like a coin weighted 75/25, the difference between a 78%-accurate rater and a 77%-accurate rater disappears into sampling error. RLAIF matching RLHF is therefore partly a fact about RLAIF and partly a fact about how loose the human signal was to begin with.</p>
+<p>This does not dissolve the practical claim — if the human ceiling is where it is, an AI labeler that reaches it is good enough for the job. But it sharpens what “good enough” means. It is not that AI feedback has closed the gap to some ideal human judgment; it is that the human judgment being approximated was already saturated with disagreement, so any rater landing inside that band looks equivalent. The honest version of the result is conditional: for tasks where humans agree only 73–77% of the time, AI labels are competitive. On a task with crisper ground truth, the story could break differently, and nothing here forecloses that.</p>
+</section>
+<section id="two-ways-to-turn-an-opinion-into-a-reward" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="two-ways-to-turn-an-opinion-into-a-reward"><span class="header-section-number">3</span> Two ways to turn an opinion into a reward</h2>
+<p>How the labeler’s judgment becomes a training signal is where the paper’s instincts show, and it sets up the d-RLAIF result.</p>
+<p>Canonical RLAIF still trains a reward model, but not with the loss everyone reaches for first. The standard objective is the Bradley–Terry pairwise log-likelihood,</p>
+<p><span class="math display">
+\mathcal{L}_r(\phi) = -\mathbb{E}_{(x,y_w,y_l)\sim\mathcal{D}}\left[\log\sigma\big(r_\phi(x,y_w)-r_\phi(x,y_l)\big)\right],
+</span></p>
+<p>which treats each datum as a hard verdict: <span class="math inline">y_w</span> beat <span class="math inline">y_l</span>, end of story. The LLM labeler does not give a verdict. It gives a distribution — the softmax over the log-probabilities of generating the tokens “1” and “2” — that might read <span class="math inline">[0.6, 0.4]</span>. So RLAIF instead trains the reward model with a cross-entropy loss against the softmax of its own scores, matching the labeler’s <em>confidence</em>, not just its argmax. The authors name this plainly: it is distillation.</p>
+<p>Why keep the soft target? Because hard-thresholding <span class="math inline">[0.6, 0.4]</span> to <span class="math inline">[1,0]</span> before training discards exactly what makes a fallible labeler usable. A 51/49 near-tie and a 99/1 near-certainty would then push the reward model with identical force, though one is essentially a coin flip. The soft label lets low-confidence pairs move the reward model less — label smoothing for free, which the pairwise loss cannot express. Read against the ceiling argument, this is more than a tidiness point: a soft label is the labeler honestly reporting that it, too, is unsure, which on a 75%-agreement task is the correct posture.</p>
+<p>Direct-RLAIF presses the same instinct to its conclusion and asks why the reward model needs to exist. Rather than distilling preferences into a network once and freezing it, d-RLAIF prompts the labeler to score a single response on a 1–10 scale during RL and reads the reward off the token distribution,</p>
+<p><span class="math display">
+s(y \mid x) = \sum_{i=1}^{10} i \cdot P(i \mid y, x),
+</span></p>
+<p>then rescales to <span class="math inline">[-1,1]</span>. Taking the expectation rather than the argmax is the whole move. Decode the single most likely score and you get one of ten integers — a step function whose flat plateaus give RL nothing to climb between levels. The probability-weighted mean is continuous: mass split between “7” and “8” returns 7.5 instead of snapping to whichever token wins by an epsilon. A discrete rating becomes a smooth reward surface, which is the only reason it can sit inside a gradient-based loop at all.</p>
+</section>
+<section id="why-throwing-the-reward-model-out-helps" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="why-throwing-the-reward-model-out-helps"><span class="header-section-number">4</span> Why throwing the reward model out helps</h2>
+<p>The reason d-RLAIF gives for itself is staleness. A reward model is trained once, on responses sampled from the initial policy. As RL moves the policy, its outputs drift from that training distribution, and the reward model is increasingly asked to score things unlike anything it saw. Its judgments rot precisely where you now need them.</p>
+<p>The paper states this but leaves the key subtlety implicit, and it is the subtlety that explains why the fix works. A frozen off-the-shelf scorer also has fixed weights, so why is it immune? Because staleness was never about the weights. It was about the <em>training distribution</em> being fixed. The reward model was narrowly fit to one policy’s outputs; the off-the-shelf labeler was never fit to the policy at all. As a generalist rater, it does not experience the policy’s distributional shift as out-of-distribution the way a model trained to mimic preferences over a single, now-obsolete sampling distribution does. The immunity is to distributional drift, not to weight staleness — and that is the actual engine of the result.</p>
+<p>So the generalist beats the specialist. Shown responses side by side, annotators prefer d-RLAIF over a same-size canonical RLAIF policy 60% of the time, and d-RLAIF’s 74% win rate over the supervised baseline on summarization edges past canonical RLAIF’s. The reward model was not merely removable; keeping it was costing performance.</p>
+</section>
+<section id="the-crack-the-paper-half-acknowledges" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="the-crack-the-paper-half-acknowledges"><span class="header-section-number">5</span> The crack the paper half-acknowledges</h2>
+<p>Here is the result I think the authors undersold, because it reframes everything above. Reward-model accuracy does not predict the policy you get.</p>
+<p>Against held-out human preferences, the human-feedback reward model scores 79.3% on summarization and the AI-feedback one only 74.2%. By the usual logic the human reward model should yield the better policy. It does not — RLAIF ties or wins. The inversion sharpens inside the AI-feedback setups: a reward model trained on plain “Base 0-shot” labels is <em>more</em> accurate (77.9%) than one trained on elaborate “Detailed + CoT” labels (74.2%), yet the more accurate reward model produces the <em>worse</em> policy after RL. The paper concedes, in a single appendix sentence, that reward-model accuracy “may not accurately reflect a RM’s effectiveness.”</p>
+<p>That concession deserved to be a heading, not a footnote, because it is the premise the whole d-RLAIF result stands on. If top-1 ranking accuracy on a static human holdout fails to track the quality of the policy you train, the reward model is a leaky proxy being scored against the wrong yardstick. What predicts the policy is not how often the reward model ranks a frozen pair correctly; it is the shape and calibration of the reward surface over the moving distribution the policy actually explores. A reward model is a snapshot of preferences over yesterday’s outputs. A live labeler scores today’s. Once you see that gap, deleting the reward model stops looking like an efficiency hack and starts looking like the right response to a measurement that was misleading you.</p>
+</section>
+<section id="the-negative-results-carry-more-information-than-the-wins" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="the-negative-results-carry-more-information-than-the-wins"><span class="header-section-number">6</span> The negative results carry more information than the wins</h2>
+<p>The prompting-techniques study reads like routine ablation — try detailed instructions, chain-of-thought, few-shot exemplars, report the alignment numbers. The wins are tiny, under two points each. But the <em>pattern of failures</em> says more than the size of the wins, and reading it requires the metric being optimized: AI labeler alignment, how often the labeler agrees with a held-out human. For <span class="math inline">D</span> examples,</p>
+<p><span class="math display">
+z_{acc} = \frac{1}{D}\sum_{i=1}^{D} \mathbb{1}\left[\arg\max_j P^{AI}_{i,j} = p^H_i\right],
+</span></p>
+<p>where <span class="math inline">P^{AI}</span> is the matrix of soft AI preferences and <span class="math inline">p^H</span> the vector of human labels. The form is deliberately cheap: it collapses the soft AI distribution back to a hard argmax and compares it to a hard human label, discarding the very calibration that soft-label distillation tried to preserve. That is the point — this number scores the <em>labeler</em>, not the policy, so it can be computed without an RL run. It is the dial the authors turn while iterating on prompts, because the real objective costs a full training run and a human study to read. It is a proxy for a proxy, and the failures are most legible with that in mind.</p>
+<p>Three stand out. Chain-of-thought helps consistently on summarization, inconsistently elsewhere. Few-shot prompting <em>hurts</em>: on summarization and helpfulness, alignment falls as exemplars are added, and ten trials with different randomly drawn exemplars failed to beat zero-shot. Self-consistency — sampling several rationales and averaging — <em>strictly degrades</em> alignment, by over five points at the highest temperature.</p>
+<p>These rhyme. The interventions that help a weak model reason through an unfamiliar task — worked examples, multiple sampled rationales — backfire when the model already has the task cold. The coherent reading is that an instruction-tuned PaLM 2 L already holds a well-formed notion of a good summary, so exemplars inject noise into a judgment it would otherwise make cleanly. This is the human-agreement ceiling seen from the labeler’s side: the task is easy enough and the model capable enough that the binding constraint is the target’s irreducible noise, not the model’s reasoning. You cannot prompt past a ceiling set by how much humans disagree.</p>
+<p>One mechanical source of noise is worth a paragraph: position bias, the labeler’s tendency to favor a candidate by its slot. The fix is to run each pair twice with the order flipped and average. It works for the large labeler — PaLM 2 L prefers a fixed slot only 18% of the time — and patches over the small ones, where PaLM 2 XS prefers a fixed slot 56% of the time and, when it does, picks the second candidate 99% of the time. Averaging cancels a symmetric offset, but a 99%-directional thumb on the scale is not symmetric, so a residual survives — and it survives largest for exactly the small labelers the self-improvement story leans on.</p>
+</section>
+<section id="what-the-cost-argument-buys-and-where-scaling-is-earned" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="what-the-cost-argument-buys-and-where-scaling-is-earned"><span class="header-section-number">7</span> What the cost argument buys, and where “scaling” is earned</h2>
+<p>The economic case is the paper’s cleanest claim and its easiest to over-read. Priced against contemporary GPT-4 and cloud-annotation rates, the estimate is roughly six cents per AI-labeled example against about sixty-seven cents per human one — over 10× cheaper, even after doubling the AI cost to pay for the position-bias double inference. The caveats are stated honestly: the figure excludes setup cost, annotator training, and the expert-versus-crowd distinction, and the authors reserve trained human experts as the gold standard for high-stakes domains. The 10× is throughput economics for crowd-grade labeling, not a claim that AI labels are free or expert-equivalent.</p>
+<p>The structural point is the one the title’s “scaling” actually earns. For canonical RLAIF the labeler is called <em>once</em>, to build the dataset, and never again — the reward model carries the signal through RL. So the labeler’s cost amortizes over the whole run, which means a much <em>larger</em> labeler is not prohibitive, and the size results (alignment climbing 62.7% → 73.8% → 78% from XS to S to L) imply a bigger one would buy better labels. That is a genuine, monotone scaling curve the pipeline structure makes cheap to climb. d-RLAIF spends the advantage differently, calling the labeler at every step in exchange for freshness — the cost-side mirror of the staleness-versus-distillation trade.</p>
+</section>
+<section id="where-the-framing-outruns-the-evidence" class="level2" data-number="8">
+<h2 data-number="8" class="anchored" data-anchor-id="where-the-framing-outruns-the-evidence"><span class="header-section-number">8</span> Where the framing outruns the evidence</h2>
+<p>The parity claim leans on its statistics harder than it admits. “Not statistically significantly different from 50%” is evidence that no gap was <em>detected</em>, not evidence of equality. With around 2,000 rating instances and three raters each the study is decently powered, but it never runs an equivalence test — the tool that would actually license “equally preferred.” The harmlessness win, which <em>is</em> significant, does quiet work to prop up “at least as good.” On the other two tasks the defensible statement is “we could not tell them apart,” which is weaker than parity even if it points the same way for a practitioner.</p>
+<p>The harmlessness win itself rests partly on a change of instrument. Harmlessness is scored not by pairwise win rate but by independent harmful/harmless judgments, because too many responses were equally safe to rank. A more sensitive instrument can register an absolute gap a forced ranking washes out; layer on a labeler shaped heavily toward safety by instruction tuning, and the cleanest reading is that the metric change made the gap <em>visible</em> while the safety tuning made it <em>real</em>. Neither is a flaw, but “RLAIF is safer” is doing two jobs at once.</p>
+<p>Then there is “self-improvement.” The authors are candid that the same-size case — labeler and policy at the same scale but different checkpoints — is not strict self-improvement. The strict case, on helpful dialogue, is real: the labeler and the initial policy are one checkpoint. Even there I would resist the phrase. Nothing is created from nothing. RL surfaces preference knowledge the base model already encodes but cannot express through its own sampling — the familiar gap between being able to <em>rank</em> two responses and being able to <em>generate</em> the better one. d-RLAIF converts the latent evaluator into a better sampler, which is useful and bounded: alignment falls from 78% to 62.7% as the rater shrinks, exactly what you expect if a model cannot bootstrap past its own evaluative ceiling. “Self-distillation up to the limit of what the model can already judge” is the more defensible label.</p>
+<p>A last number keeps the win rates honest. RLAIF and RLHF generate longer responses than the baseline, and length flatters raters. After a post-hoc length correction the summarization gains over the baseline drop from 71%/73% to 59%/61% — about a third of the apparent improvement was length. The relative claim survives, since the correction hits both arms symmetrically and RLAIF-versus-RLHF stays a coin flip; the absolute claim takes the haircut. The authors admit the regression-based fix is imperfect and that a length-penalized training objective would be the principled experiment — which for a comparative paper is fine, but for anyone reading 71% as a quality score is a warning label.</p>
+</section>
+<section id="what-the-paper-actually-moved" class="level2" data-number="9">
+<h2 data-number="9" class="anchored" data-anchor-id="what-the-paper-actually-moved"><span class="header-section-number">9</span> What the paper actually moved</h2>
+<p>Stripped to its load-bearing wall, the contribution is not “AI feedback works” — Constitutional AI had already shown LLM-generated signal could drive RL <span class="citation" data-cites="baiConstitutionalAIHarmlessness2022">(<a href="#ref-baiConstitutionalAIHarmlessness2022" role="doc-biblioref">Bai et al. 2022</a>)</span>. What this paper adds is the controlled isolation of the label source the earlier blend never allowed, and, more lastingly, a stack of evidence that the trained reward model is the soft spot in the pipeline the field built around InstructGPT <span class="citation" data-cites="ouyangTrainingLanguageModels2022">(<a href="#ref-ouyangTrainingLanguageModels2022" role="doc-biblioref">Ouyang et al. 2022</a>)</span>.</p>
+<p>The pieces only cohere when you stop reading them as separate ablations. The human-agreement ceiling explains why AI labels can compete at all: the target is noisy enough that a capable model lands inside the band of human disagreement. The prompting failures explain why you cannot squeeze much more from the labeler: it already knows the easy tasks. The accuracy disconnect explains why the obvious quality metric misleads. And d-RLAIF is what you build once you believe all three — a live judge in place of a frozen, drifting proxy.</p>
+<p>DPO attacked the same pipeline from the optimizer side, folding the reward model into a classification loss <span class="citation" data-cites="rafailovDirectPreferenceOptimization2024">(<a href="#ref-rafailovDirectPreferenceOptimization2024" role="doc-biblioref">Rafailov et al. 2024</a>)</span>. d-RLAIF attacks it from the reward side, keeping RL but swapping the frozen proxy for a live judge. Both circle one suspicion: the reward model was a convenience of 2020-era pipelines, and once the labeler is itself a capable model, that convenience is no longer worth its cost in staleness and lost calibration. The label-source debate got the title. The reward model’s expendability is what the years since went on to confirm.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-baiConstitutionalAIHarmlessness2022" class="csl-entry" role="listitem">
+Bai, Yuntao, Saurav Kadavath, Sandipan Kundu, et al. 2022. <em>Constitutional <span>AI</span>: <span>Harmlessness</span> from <span>AI Feedback</span></em>. arXiv:2212.08073. arXiv. <a href="https://arxiv.org/abs/2212.08073">https://arxiv.org/abs/2212.08073</a>.
+</div>
+<div id="ref-leeRLAIFVsRLHF2024" class="csl-entry" role="listitem">
+Lee, Harrison, Samrat Phatale, Hassan Mansoor, et al. 2024. <em><span>RLAIF</span> Vs. <span>RLHF</span>: <span>Scaling Reinforcement Learning</span> from <span>Human Feedback</span> with <span>AI Feedback</span></em>. arXiv:2309.00267. arXiv. <a href="https://arxiv.org/abs/2309.00267">https://arxiv.org/abs/2309.00267</a>.
+</div>
+<div id="ref-ouyangTrainingLanguageModels2022" class="csl-entry" role="listitem">
+Ouyang, Long, Jeff Wu, Xu Jiang, et al. 2022. <em>Training Language Models to Follow Instructions with Human Feedback</em>. arXiv:2203.02155. arXiv. <a href="https://arxiv.org/abs/2203.02155">https://arxiv.org/abs/2203.02155</a>.
+</div>
+<div id="ref-rafailovDirectPreferenceOptimization2024" class="csl-entry" role="listitem">
+Rafailov, Rafael, Archit Sharma, Eric Mitchell, Stefano Ermon, Christopher D. Manning, and Chelsea Finn. 2024. <em>Direct <span>Preference Optimization</span>: <span>Your Language Model</span> Is <span>Secretly</span> a <span>Reward Model</span></em>. arXiv:2305.18290. arXiv. <a href="https://arxiv.org/abs/2305.18290">https://arxiv.org/abs/2305.18290</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/policy-gradient-lab\.github\.io");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>

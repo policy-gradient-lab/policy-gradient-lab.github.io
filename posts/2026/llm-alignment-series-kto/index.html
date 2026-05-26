@@ -9,7 +9,7 @@
 <meta name="dcterms.date" content="2026-05-23">
 <meta name="description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
 
-<title>KTO: The Inductive Bias Was Doing the Work All Along – Policy Gradient Lab</title>
+<title>LLM Alignment Series: Kahneman-Tversky Optimization – Policy Gradient Lab</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -93,11 +93,11 @@ div.csl-indent {
 }</script>
 <meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
 <meta name="description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
-<meta property="og:title" content="KTO: The Inductive Bias Was Doing the Work All Along – Policy Gradient Lab">
+<meta property="og:title" content="LLM Alignment Series: Kahneman-Tversky Optimization – Policy Gradient Lab">
 <meta property="og:description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
 <meta property="og:type" content="article">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="KTO: The Inductive Bias Was Doing the Work All Along – Policy Gradient Lab">
+<meta name="twitter:title" content="LLM Alignment Series: Kahneman-Tversky Optimization – Policy Gradient Lab">
 <meta name="twitter:description" content="Strip the pairing from preference data and a loss with the right inductive bias still beats DPO — KTO shows alignment is loss design.">
 
   <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
@@ -172,7 +172,7 @@ window.Quarto = {
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">KTO: The Inductive Bias Was Doing the Work All Along</h1></header>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">LLM Alignment Series: Kahneman-Tversky Optimization</h1></header>
 
 <header id="title-block-header">
 
@@ -196,7 +196,7 @@ window.Quarto = {
   <li><a href="#what-kto-settled-and-what-it-merely-relocated" id="toc-what-kto-settled-and-what-it-merely-relocated"><span class="header-section-number">5</span> What KTO Settled, and What It Merely Relocated</a></li>
   </ul>
 </nav>
-<p>Take a preference dataset — prompt, a better completion, a worse one. Throw away the link between the two completions. Relabel the better one “desirable,” the worse one “undesirable,” and shuffle them into a pile of individual examples. You have just destroyed the structure that Direct Preference Optimization is built to exploit. Train on that pile with KTO and you beat DPO on the data it was designed for <span class="citation" data-cites="ethayarajhKTOModelAlignment2024">(<a href="#ref-ethayarajhKTOModelAlignment2024" role="doc-biblioref">Ethayarajh et al. 2024</a>)</span>.</p>
+<p>Take a preference dataset — prompt, a better completion, a worse one. Throw away the link between the two completions. Relabel the better one “desirable,” the worse one “undesirable,” and shuffle them into a pile of individual examples. You have just destroyed the structure that Direct Preference Optimization (DPO) is built to exploit. Train on that pile with Kahneman-Tversky Optimization(KTO) and you beat DPO on the data it was designed for <span class="citation" data-cites="ethayarajhKTOModelAlignment2024">(<a href="#ref-ethayarajhKTOModelAlignment2024" role="doc-biblioref">Ethayarajh et al. 2024</a>)</span>.</p>
 <p>That result is stranger than the one the abstract sells. The pitch for KTO is usually about cost: pairwise preferences are expensive to collect, while a thumbs-up or thumbs-down is cheap and already sitting in every product’s logs, so a method that learns from binary signals lowers the price of alignment. True, and useful. But the experiments that carry the paper don’t use cheap binary data — they use the <em>same</em> academic preference sets everyone else uses, with the pairing stripped out. Same information, weaker-looking signal, better model.</p>
 <p>The lesson worth taking is not about data collection. It is that the shape of the loss function — the inductive bias it encodes about how outcomes should be valued — was doing more of the work than the data format ever was. KTO is best read as an argument that alignment is a loss-design problem that has been hiding inside a data-collection problem. Everything below follows that thread, including the places where the paper’s own evidence is thinner than its framing.</p>
 <section id="the-shape-every-working-loss-already-had" class="level2" data-number="1">
