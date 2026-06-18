@@ -2,58 +2,62 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://policy-gradient-lab.github.io/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/agentic-ai-series-swe-agent/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/agentic-ai-series-swe-bench/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/ai-agent-design-routing/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-dpo/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-kto/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-policy-gradient-theorem/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-ppo/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-rlaif/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-alignment-series-trpo/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-reasoning-series-prm/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
+  </url>
+  <url>
+    <loc>https://policy-gradient-lab.github.io/posts/2026/llm-reasoning-series-star/</loc>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/llm-reasoning-series-verifier/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/on-policy-distillation/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
   <url>
     <loc>https://policy-gradient-lab.github.io/posts/2026/openclaw-architecture/</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-18</lastmod>
   </url>
 </urlset>
