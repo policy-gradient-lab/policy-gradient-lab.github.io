@@ -6,10 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="dcterms.date" content="2026-06-06">
-<meta name="description" content="How GSM8K and verifier-guided selection improve grade-school math reasoning: a generator samples many solutions and a learned verifier scores them to select the best.">
+<meta name="dcterms.date" content="2026-08-09">
+<meta name="description" content="An LLM-based agent is a foundation model plus an execution harness; this opening post defines that harness, its six coupled runtime responsibilities, and what the series covers.">
 
-<title>LLM Reasoning Series: Generators, Verifiers, and Test-Time Selection – Policy Gradient Lab</title>
+<title>Harness Engineering Series: What Is a Harness? – Policy Gradient Lab</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -95,13 +95,13 @@ div.csl-indent {
   }
 }</script>
 <meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
-<meta name="description" content="How GSM8K and verifier-guided selection improve grade-school math reasoning: a generator samples many solutions and a learned verifier scores them to select the best.">
-<meta property="og:title" content="LLM Reasoning Series: Generators, Verifiers, and Test-Time Selection – Policy Gradient Lab">
-<meta property="og:description" content="How GSM8K and verifier-guided selection improve grade-school math reasoning: a generator samples many solutions and a learned verifier scores them to select the best.">
+<meta name="description" content="An LLM-based agent is a foundation model plus an execution harness; this opening post defines that harness, its six coupled runtime responsibilities, and what the series covers.">
+<meta property="og:title" content="Harness Engineering Series: What Is a Harness? – Policy Gradient Lab">
+<meta property="og:description" content="An LLM-based agent is a foundation model plus an execution harness; this opening post defines that harness, its six coupled runtime responsibilities, and what the series covers.">
 <meta property="og:type" content="article">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="LLM Reasoning Series: Generators, Verifiers, and Test-Time Selection – Policy Gradient Lab">
-<meta name="twitter:description" content="How GSM8K and verifier-guided selection improve grade-school math reasoning: a generator samples many solutions and a learned verifier scores them to select the best.">
+<meta name="twitter:title" content="Harness Engineering Series: What Is a Harness? – Policy Gradient Lab">
+<meta name="twitter:description" content="An LLM-based agent is a foundation model plus an execution harness; this opening post defines that harness, its six coupled runtime responsibilities, and what the series covers.">
 
   <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
   <script>document.addEventListener("DOMContentLoaded", function () {
@@ -148,7 +148,7 @@ window.Quarto = {
 </script>
 
 <link rel="stylesheet" href="../../../styles.css">
-<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/llm-reasoning-series-verifier/">
+<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/harness-engineering-what-is-a-harness/">
 </head>
 
 <body class="nav-fixed quarto-light">
@@ -175,114 +175,93 @@ window.Quarto = {
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
     </div>
 <!-- main -->
-<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">LLM Reasoning Series: Generators, Verifiers, and Test-Time Selection</h1></header>
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Harness Engineering Series: What Is a Harness?</h1></header>
 
 <header id="title-block-header">
 
 
-<p class="date">2026-06-06</p>
+<p class="date">2026-08-09</p>
 </header>
 
 <nav id="TOC" role="doc-toc">
     <h2 id="toc-title">Table of Contents</h2>
    
   <ul>
-  <li><a href="#the-gsm8k-dataset" id="toc-the-gsm8k-dataset"><span class="header-section-number">1</span> The GSM8K Dataset</a></li>
-  <li><a href="#the-finetuning-baseline-and-its-scaling-behavior" id="toc-the-finetuning-baseline-and-its-scaling-behavior"><span class="header-section-number">2</span> The Finetuning Baseline and Its Scaling Behavior</a></li>
-  <li><a href="#sampling-coverage-the-testn-metric" id="toc-sampling-coverage-the-testn-metric"><span class="header-section-number">3</span> Sampling Coverage: The test@N Metric</a></li>
-  <li><a href="#the-verification-pipeline" id="toc-the-verification-pipeline"><span class="header-section-number">4</span> The Verification Pipeline</a></li>
-  <li><a href="#token-level-and-solution-level-verifiers" id="toc-token-level-and-solution-level-verifiers"><span class="header-section-number">5</span> Token-Level and Solution-Level Verifiers</a></li>
-  <li><a href="#test-time-sample-count-and-voting" id="toc-test-time-sample-count-and-voting"><span class="header-section-number">6</span> Test-Time Sample Count and Voting</a></li>
-  <li><a href="#regularization-with-dropout" id="toc-regularization-with-dropout"><span class="header-section-number">7</span> Regularization with Dropout</a></li>
-  <li><a href="#putting-it-together" id="toc-putting-it-together"><span class="header-section-number">8</span> Putting It Together</a></li>
+  <li><a href="#an-agent-is-a-model-plus-a-harness" id="toc-an-agent-is-a-model-plus-a-harness"><span class="header-section-number">1</span> An Agent Is a Model Plus a Harness</a></li>
+  <li><a href="#interface-not-only-model-moves-performance" id="toc-interface-not-only-model-moves-performance"><span class="header-section-number">2</span> Interface, Not Only Model, Moves Performance</a></li>
+  <li><a href="#where-the-bottleneck-sits" id="toc-where-the-bottleneck-sits"><span class="header-section-number">3</span> Where the Bottleneck Sits</a></li>
+  <li><a href="#the-six-runtime-responsibilities-of-a-harness" id="toc-the-six-runtime-responsibilities-of-a-harness"><span class="header-section-number">4</span> The Six Runtime Responsibilities of a Harness</a></li>
+  <li><a href="#how-much-control-to-hand-the-model" id="toc-how-much-control-to-hand-the-model"><span class="header-section-number">5</span> How Much Control to Hand the Model</a></li>
+  <li><a href="#what-this-series-covers" id="toc-what-this-series-covers"><span class="header-section-number">6</span> What This Series Covers</a></li>
   </ul>
 </nav>
-<p>Multi-step mathematical reasoning is a setting where autoregressive language models frequently fail. A single error early in a solution propagates and is not corrected, so a model that is individually competent at each step can still produce a wrong final answer. The paper addresses this problem with two contributions <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. The first is GSM8K, a dataset of 8.5K grade-school math word problems with natural-language solutions, designed as a benchmark for informal reasoning. The second is a verification method: instead of generating one solution, the model generates many candidate solutions, and a separately trained verifier scores them so that the highest-scoring candidate can be selected.</p>
-<section id="the-gsm8k-dataset" class="level2" data-number="1">
-<h2 data-number="1" class="anchored" data-anchor-id="the-gsm8k-dataset"><span class="header-section-number">1</span> The GSM8K Dataset</h2>
-<p>GSM8K consists of 8.5K grade-school math word problems written by human contributors, split into 7.5K training and 1K test problems <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. Each problem requires between two and eight steps and uses elementary arithmetic operations. Solutions are written in natural language rather than as equations alone.</p>
-<p>The dataset is built around four design principles:</p>
+<p>Benchmarks that measure a language model’s single-turn capability, such as MMLU, GPQA, and HumanEval, have approached saturation at the frontier, while benchmarks that measure multi-step task completion, such as SWE-bench, WebArena, and OSWorld, retain large headroom <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>. The two trends diverge: raising model capability yields diminishing returns on precisely the agentic tasks that the static benchmarks no longer discriminate. This is the framing the recent literature takes as organizing. If scaling the model alone does not close the gap on multi-step tasks, what does <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>?</p>
+<p>One empirical answer predates that framing. SWE-agent held the base model fixed and changed only the interface through which the model reads and acts on a computer, and that change moved task performance substantially <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The remaining gap is attributed not to the model but to the runtime around it. This post defines that runtime, the execution harness, and the responsibilities it carries.</p>
+<section id="an-agent-is-a-model-plus-a-harness" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="an-agent-is-a-model-plus-a-harness"><span class="header-section-number">1</span> An Agent Is a Model Plus a Harness</h2>
+<p>The harness-design survey writes an LLM-based agent not as a model but as a pair <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>:</p>
+<p><span class="math display">
+A = \langle \mathcal{M}, \mathcal{H} \rangle.
+</span></p>
+<p>Here <span class="math inline">\mathcal{M}</span> is the foundation model, which supplies the general cognitive capability that makes open-ended task completion possible, and <span class="math inline">\mathcal{H}</span> is the execution harness, the runtime that mediates closed-loop interaction between the model and the external world.</p>
+<p>Why write the agent this way rather than treating the harness as prompt scaffolding around a model? Because prompting is feedforward. It optimizes the input to each reasoning step but supplies no mechanism to detect drift, verify an intermediate outcome, or recover from an error <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>. Folding the runtime into the prompt hides the components that do that work. The pair notation instead separates the part that provides capability from the part that determines whether capability becomes reliable completion, so that the two can be studied and optimized independently.</p>
+<p>The term harness engineering was crystallized by Hashimoto and by OpenAI, who framed an agent as model plus harness and named observation shaping, action-space design, sandboxing, context management, and verification as its components, as the survey recounts <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>.</p>
+</section>
+<section id="interface-not-only-model-moves-performance" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="interface-not-only-model-moves-performance"><span class="header-section-number">2</span> Interface, Not Only Model, Moves Performance</h2>
+<p>SWE-agent introduced the agent-computer interface (ACI), an abstraction layer between the model and the computer that fixes the commands the agent can issue and the format of the feedback it receives <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The design is drawn by analogy to human-computer interaction: a shell that serves a human user well is not the interface that serves a language model best.</p>
+<p>With GPT-4 Turbo, SWE-agent resolves 12.47% of the 2294 SWE-bench test tasks, against a previous best of 3.8% from a non-interactive, retrieval-augmented system <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. That comparison changes both the system and the interaction mode, so the paper isolates the interface with an ablation on the 300-instance SWE-bench Lite subset: the same agent solves 10.7 percentage points more instances with the ACI than with only a default Linux shell. The ACI was tuned for GPT-4 Turbo but transfers, resolving 10.5% of tasks with Claude 3 Opus. The gain therefore attaches to the interface, holds across base models, and requires no change to model weights.</p>
+<p>Why does interface design carry this weight? A Linux shell is configurable for a human but gives an agent no compact command to edit a small file span and returns no feedback when an edit is invalid <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The agent’s effective ability is bounded by what its interface makes expressible and legible, not only by what the model could in principle do. Redesigning the interface changes both what the model observes and how it acts, which is why the same weights produce different task success under different ACIs.</p>
+</section>
+<section id="where-the-bottleneck-sits" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="where-the-bottleneck-sits"><span class="header-section-number">3</span> Where the Bottleneck Sits</h2>
+<p>The survey organizes agent engineering into four paradigms, each foregrounding a different performance lever <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>. Prompt engineering optimizes the single instruction sent to the model and addresses how a task is posed. Workflows and context engineering move the unit of optimization to the information lifecycle around multi-step execution, curating what enters the context window, when, and in what form. Harness engineering closes the loop: the model acts, observes the environment’s response, and reasons over that observation to choose the next step <span class="citation" data-cites="yaoReActSynergizingReasoning2023">(<a href="#ref-yaoReActSynergizingReasoning2023" role="doc-biblioref">Yao et al. 2023</a>)</span>, and the runtime, not the prompt, governs whether execution stays on track. Agent-native training and co-evolution internalize agentic behavior into weights and, over deployment, update the model, harness, and improvement loop from execution traces.</p>
+<p>The survey presents these as coexisting stages rather than replacements, and reads the history as a migration of the bottleneck from eliciting model behavior, to organizing context, to controlling execution, and toward learnable runtimes. The claim it draws from that reading is that agent performance is a property of the model-harness pairing, not of the model in isolation <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>. This series takes the harness side of that pairing as its subject.</p>
+</section>
+<section id="the-six-runtime-responsibilities-of-a-harness" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="the-six-runtime-responsibilities-of-a-harness"><span class="header-section-number">4</span> The Six Runtime Responsibilities of a Harness</h2>
+<p>Within the pairing, the survey decomposes the harness into six coupled components <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>:</p>
+<p><span class="math display">
+\mathcal{H} = \langle \mathcal{I}_{\mathrm{obs}}, \mathcal{C}, \mathcal{L}, \mathcal{I}_{\mathrm{act}}, \mathcal{S}, \mathcal{V} \rangle.
+</span></p>
+<p>The observation interface <span class="math inline">\mathcal{I}_{\mathrm{obs}}</span> determines which environment signals are exposed to the model and how they are rendered. The context manager <span class="math inline">\mathcal{C}</span> selects, compresses, orders, and refreshes what actually enters the current model call. The control loop <span class="math inline">\mathcal{L}</span> organizes execution across steps, tools, and handoffs, turning observation, reasoning, action, and feedback into a runnable process. The action interface <span class="math inline">\mathcal{I}_{\mathrm{act}}</span> maps model outputs to executable operations and defines what the agent can do. The state and artifact store <span class="math inline">\mathcal{S}</span> persists progress, traces, and artifacts beyond the active context window. The verification and governance layer <span class="math inline">\mathcal{V}</span> checks, constrains, and repairs execution through tests, judges, sandboxing, budgets, and rollback.</p>
+<p>Why decompose by runtime responsibility rather than by software module? The survey states that the decomposition is not a package diagram; each element names a recurring point at which model capability either does or does not become reliable completion <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>. A long-horizon failure is often not a failure of reasoning but of legibility, of a missing action, or of an unverified step, and the six axes name where those failures occur.</p>
+<p>Why treat the six as coupled rather than independent modules? Because a choice in one shifts burden onto another. Richer observations improve grounding but raise the cost the context manager must pay to select and compress them. More expressive actions widen capability but demand stronger verification and governance. Harness design is therefore a coupled systems problem, and the same six axes double as a way to read a task, since different domains, horizons, and oracle strengths stress different components. Concurrent 2026 surveys reach similar decompositions, one formalizing the harness as a six-component tuple and another as a seven-layer taxonomy, as this survey catalogs <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>.</p>
+</section>
+<section id="how-much-control-to-hand-the-model" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="how-much-control-to-hand-the-model"><span class="header-section-number">5</span> How Much Control to Hand the Model</h2>
+<p>The control loop carries a design decision the other components inherit: how much of the trajectory the runtime fixes and how much the model decides. Practitioner guidance draws the line between a workflow, defined as a system “where LLMs and tools are orchestrated through predefined code paths,” and an agent, defined as a system “where LLMs dynamically direct their own processes and tool usage” <span class="citation" data-cites="schluntzBuildingEffectiveAI2024">(<a href="#ref-schluntzBuildingEffectiveAI2024" role="doc-biblioref">Schluntz and Zhang 2024</a>)</span>. The same guidance recommends the simplest structure that solves the task and adds autonomy only when a fixed path cannot be specified in advance <span class="citation" data-cites="schluntzBuildingEffectiveAI2024">(<a href="#ref-schluntzBuildingEffectiveAI2024" role="doc-biblioref">Schluntz and Zhang 2024</a>)</span>. This is a recommendation drawn from deployment experience rather than a benchmarked result, but it names the axis the loop is built on: predictability against flexibility.</p>
+</section>
+<section id="what-this-series-covers" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="what-this-series-covers"><span class="header-section-number">6</span> What This Series Covers</h2>
+<p>The six responsibilities are the survey’s decomposition. For exposition, this series groups them into four families and adds one further topic; the grouping is a convenience of presentation, not a claim that four families are more correct than six responsibilities, and the mapping is stated so the coarser labels trace back.</p>
 <ul>
-<li><strong>High quality.</strong> Problems are human-written rather than scraped. After agreement checks in which contributors re-solve each other’s problems, the estimated rate of breaking errors is about 1.7%.</li>
-<li><strong>High diversity.</strong> Templated problems are avoided, so problems differ in linguistic form and scenario rather than superficial detail. Held-out accuracy then measures generalization rather than memorization.</li>
-<li><strong>Moderate difficulty.</strong> Difficulty is calibrated to be hard for the largest available models without being intractable, so the dataset can resolve differences in data-scaling between methods.</li>
-<li><strong>Natural-language solutions.</strong> Solutions are collected as natural-language explanations rather than pure expressions.</li>
+<li>The Loop treats the control loop <span class="math inline">\mathcal{L}</span>: the reason-act-observe cycle, planning, reflection, search over trajectories, and the workflow-versus-agent choice above.</li>
+<li>Tools and Interfaces treats the action interface <span class="math inline">\mathcal{I}_{\mathrm{act}}</span> together with the observation interface <span class="math inline">\mathcal{I}_{\mathrm{obs}}</span>: how commands, schemas, and feedback formats shape the agent’s effective action space, with the ACI as the reference case.</li>
+<li>Context treats the context manager <span class="math inline">\mathcal{C}</span> and the state and artifact store <span class="math inline">\mathcal{S}</span>: what enters each call, how memory is compressed and retrieved, and how state persists across a long run.</li>
+<li>Evaluation treats verification and governance <span class="math inline">\mathcal{V}</span>: tests, judges, and the benchmarks that measure whether a harness works.</li>
 </ul>
-<p>These properties determine what the benchmark measures. Because problems are diverse and untemplated, held-out accuracy reflects generalization. Because difficulty is calibrated to the capability of large models, the benchmark resolves differences between methods that would be invisible on a dataset that is either saturated or intractable.</p>
-<p>To reduce arithmetic mistakes, all models are trained to use a calculator through calculation annotations injected into the training data. At test time, sampling is overridden when the model emits a well-formed annotation, and the expression is evaluated directly.</p>
-</section>
-<section id="the-finetuning-baseline-and-its-scaling-behavior" class="level2" data-number="2">
-<h2 data-number="2" class="anchored" data-anchor-id="the-finetuning-baseline-and-its-scaling-behavior"><span class="header-section-number">2</span> The Finetuning Baseline and Its Scaling Behavior</h2>
-<p>The baseline method is autoregressive finetuning on the demonstrations, evaluated by a single low-temperature sample per test problem <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. Across model sizes the test solve rate is approximately log-linear. Extrapolating this trend, attainment of an <span class="math inline">80\%</span> solve rate by finetuning alone would require a model of order <span class="math inline">10^{16}</span> parameters, or the 175B model trained on at least two additional orders of magnitude of data.</p>
-<p>The slope is shallow because autoregressive decoding has no error-correction mechanism. A model writing a multi-step derivation cannot revise an earlier step, so an early error propagates and the probability of a fully correct solution decreases multiplicatively in the number of steps. Raising single-sample accuracy requires reducing the per-step error rate across the entire trajectory.</p>
-<p>The intermediate reasoning is necessary, not optional. A 6B model finetuned to emit only the final answer, with no intermediate steps, attains a solve rate of <span class="math inline">5.2\%</span>, compared with <span class="math inline">20.6\%</span> for the same model when it generates the full natural-language solution <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>.</p>
-</section>
-<section id="sampling-coverage-the-testn-metric" class="level2" data-number="3">
-<h2 data-number="3" class="anchored" data-anchor-id="sampling-coverage-the-testn-metric"><span class="header-section-number">3</span> Sampling Coverage: The test@N Metric</h2>
-<p>Allowing <span class="math inline">N</span> samples per problem changes the relevant quantity. Define test@<span class="math inline">N</span> as the fraction of problems for which at least one of <span class="math inline">N</span> samples is correct. If a single sample solves problem <span class="math inline">x</span> with probability <span class="math inline">p_\theta(x)</span> and the samples are independent, then</p>
-<p><span class="math display">
-\text{test@}N \;=\; \mathbb{E}_{x}\!\left[\, 1 - \big(1 - p_\theta(x)\big)^{N} \,\right].
-</span></p>
-<p>The expression is written as the complement of joint failure because “at least one of <span class="math inline">N</span> samples is correct” is the negation of “all <span class="math inline">N</span> samples are incorrect,” and under independence the probability that all fail is <span class="math inline">(1 - p_\theta)^N</span>. This form makes the effect of <span class="math inline">N</span> explicit. A problem solved with per-sample probability <span class="math inline">0.05</span> is solved at least once across <span class="math inline">100</span> samples with probability <span class="math inline">1 - 0.95^{100} \approx 0.994</span>. A correct solution is therefore usually present in the sample set even when the generator does not assign it the highest probability on a single greedy draw. This difference between producing a correct solution and producing one as the single most probable output is what the verification method exploits.</p>
-<p>The independence assumption is an idealization, and the paper relies on its consequences without stating it. Samples drawn from one model at a fixed temperature are correlated. A model whose output distribution has concentrated retains a high per-sample <span class="math inline">p_\theta</span> but generates few distinct solutions, so its effective sample count is below <span class="math inline">N</span>. The training procedure that controls this concentration is discussed below.</p>
-</section>
-<section id="the-verification-pipeline" class="level2" data-number="4">
-<h2 data-number="4" class="anchored" data-anchor-id="the-verification-pipeline"><span class="header-section-number">4</span> The Verification Pipeline</h2>
-<p>The verification method has three steps <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>:</p>
-<ol type="1">
-<li>Finetune a generator on the training set for two epochs.</li>
-<li>Sample 100 completions per training problem and label each as correct or incorrect according solely to whether its final answer matches.</li>
-<li>Train a verifier for one epoch to predict this correctness label.</li>
-</ol>
-<p>At test time, the generator produces multiple completions, the verifier scores each, and the highest-scoring completion is returned. The labels are produced by arithmetic comparison of the final answer rather than by human annotation, which is what allows the verifier’s training data to scale.</p>
-<p>The two-epoch limit on generator training follows from the coverage metric. Extended generator training increases single-sample accuracy, but test@100 peaks within the first few epochs and then declines as the output distribution concentrates and sample diversity falls <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. The verifier selects only among supplied candidates, so it requires a generator with high coverage rather than high single-sample accuracy. Stopping generator training early preserves the count of distinct samples on which selection depends.</p>
-<p>The relative size of the two models is also informative. A large generator paired with a small verifier outperforms a small generator paired with a large verifier <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. Candidate coverage contributes more to final accuracy than verifier capacity. A verifier substantially smaller than its generator remains effective, which indicates that it is not performing complete step-by-step verification — a small model lacks the capacity for that — but is instead using shallow features that correlate with correct answers. This property is relevant to the test-time behavior described below.</p>
-</section>
-<section id="token-level-and-solution-level-verifiers" class="level2" data-number="5">
-<h2 data-number="5" class="anchored" data-anchor-id="token-level-and-solution-level-verifiers"><span class="header-section-number">5</span> Token-Level and Solution-Level Verifiers</h2>
-<p>The default verifier emits a prediction after each token rather than a single prediction for the completed solution:</p>
-<p><span class="math display">
-V\big(x,\, y_{\le t}\big) \;\approx\; P\big(\text{final answer correct} \mid x,\, y_{\le t}\big).
-</span></p>
-<p>This token-level form is a value function over the partial solution. It trains more slowly and with more noise than the solution-level variant, which scores only the completed answer, but it reaches higher final performance and continues to improve while the solution-level variant overfits <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. Predicting at every prefix requires the model to evaluate the solution as it develops rather than only at the final answer.</p>
-<p>The supervision is outcome-based. Each token in a solution receives the single label of final-answer correctness, applied to all positions. Under the standard taxonomy this verifier is an outcome reward model; it is the reference instance against which later process-supervised methods are compared. A process reward model is defined by training on per-step labels that distinguish correct from incorrect steps within a solution, including solutions that reach the correct final answer. This verifier has no such labels, so the token-level prediction adds density of output rather than step-level supervision. Later work supplies the missing labels directly: Lightman et al.&nbsp;train a process reward model on human step-level annotations and release PRM800K, a dataset of 800,000 such labels, reporting that process supervision outperforms outcome supervision on the MATH dataset <span class="citation" data-cites="lightmanLetsVerifyStep2023a">(<a href="#ref-lightmanLetsVerifyStep2023a" role="doc-biblioref">Lightman et al. 2023</a>)</span>.</p>
-<p>This supervision carries a known limitation. A solution that reaches the correct final answer through incorrect reasoning is labeled correct, which produces false positives that per-token prediction cannot resolve, because the labels do not encode step correctness. The verifier is also trained with an auxiliary language-modeling objective alongside the correctness objective; the paper reports this as a consistent improvement, attributable to better modeling of the solution distribution.</p>
-</section>
-<section id="test-time-sample-count-and-voting" class="level2" data-number="6">
-<h2 data-number="6" class="anchored" data-anchor-id="test-time-sample-count-and-voting"><span class="header-section-number">6</span> Test-Time Sample Count and Voting</h2>
-<p>At test time the selection rule is</p>
-<p><span class="math display">
-\hat{y} \;=\; \arg\max_{i \in \{1,\dots,N\}} V\big(x,\, y_i\big),
-</span></p>
-<p>the highest-scoring of <span class="math inline">N</span> samples. The achievable accuracy is bounded above by test@<span class="math inline">N</span>, because the verifier cannot select a correct solution that was never sampled, and the verifier determines how much of that bound is realized. For moderate <span class="math inline">N</span>, increasing <span class="math inline">N</span> raises both the bound and the realized accuracy.</p>
-<p>The relation does not hold for large <span class="math inline">N</span>. Increasing the number of completions improves accuracy up to approximately 400 per problem, after which accuracy declines <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. The paper attributes this to the selection of “adversarial solutions that fool the verifier”: because the verifier is an estimator of correctness rather than correctness itself, searching over more samples eventually selects solutions that the verifier scores highly but that are not correct. This behavior was later described in terms of reward over-optimization; the paper documents the phenomenon without using that terminology.</p>
-<p>One mitigation is to take a majority vote over the highest-ranked candidates rather than selecting the single maximum. With 100 samples, a vote over the top 3–5 candidates is approximately optimal; with 3,200 samples, a vote over the top 30 <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. A single high-scoring incorrect solution can attain the maximum verifier score but rarely forms a plurality of final answers, so aggregating over several high-ranked candidates reduces sensitivity to the verifier’s largest single error.</p>
-</section>
-<section id="regularization-with-dropout" class="level2" data-number="7">
-<h2 data-number="7" class="anchored" data-anchor-id="regularization-with-dropout"><span class="header-section-number">7</span> Regularization with Dropout</h2>
-<p>Both finetuning and verification benefit from residual dropout, applied at a rate of 20% <span class="citation" data-cites="cobbeTrainingVerifiersSolve2021">(<a href="#ref-cobbeTrainingVerifiersSolve2021" role="doc-biblioref">Cobbe et al. 2021</a>)</span>. The largest effect is on the solution-level verifier, where dropout reduces overfitting to approximately the performance of the token-level verifier. The improvement is smaller for the token-level verifier, which overfits less to begin with. Across the paper’s results, the recurring failure mode is concentration of the model on the single correct answer with loss of the diversity that selection requires, and each technique — the two-epoch generator, the token-level value function, and dropout — counteracts it.</p>
-</section>
-<section id="putting-it-together" class="level2" data-number="8">
-<h2 data-number="8" class="anchored" data-anchor-id="putting-it-together"><span class="header-section-number">8</span> Putting It Together</h2>
-<p>The paper introduces GSM8K and a verification method for grade-school math reasoning. Finetuning a generator and evaluating a single sample improves only slowly with data and model size. The verification method instead generates many candidate solutions and selects among them with a learned verifier, which is trained on outcome labels derived automatically from final-answer correctness. The token-level verifier is an outcome reward model that predicts correctness after each token. On the full dataset, 6B verification slightly exceeds a finetuned 175B model, a difference the paper characterizes as approximately a 30x increase in model size, and verification improves with data faster than the finetuning baseline.</p>
-<p>The method also has measurable limits. Accuracy from additional test-time samples increases only up to a point, beyond which selection begins to favor solutions that the verifier scores highly without being correct. The combination of a supervised generator, a learned verifier, and selection over many samples at test time recurs in later work on reasoning systems <span class="citation" data-cites="deepseek-aiDeepSeekR1IncentivizingReasoning2025 shaoDeepSeekMathPushingLimits2024">(<a href="#ref-deepseek-aiDeepSeekR1IncentivizingReasoning2025" role="doc-biblioref">DeepSeek-AI et al. 2025</a>; <a href="#ref-shaoDeepSeekMathPushingLimits2024" role="doc-biblioref">Shao et al. 2024</a>)</span>.</p>
+<p>A closing post treats self-improvement, where the harness itself becomes a learnable object and, in the survey’s fourth paradigm, the model, harness, and improvement loop co-evolve from execution traces <span class="citation" data-cites="guoQuestionAnsweringTask2026 gaoSurveySelfEvolvingAgents2025">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>; <a href="#ref-gaoSurveySelfEvolvingAgents2025" role="doc-biblioref">Gao et al. 2025</a>)</span>.</p>
 
 
 
 </section>
 
 <div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
-<div id="ref-cobbeTrainingVerifiersSolve2021" class="csl-entry" role="listitem">
-Cobbe, Karl, Vineet Kosaraju, Mohammad Bavarian, et al. 2021. <em>Training <span>Verifiers</span> to <span>Solve Math Word Problems</span></em>. arXiv:2110.14168. arXiv. <a href="https://arxiv.org/abs/2110.14168">https://arxiv.org/abs/2110.14168</a>.
+<div id="ref-gaoSurveySelfEvolvingAgents2025" class="csl-entry" role="listitem">
+Gao, Huan-ang, Jiayi Geng, Wenyue Hua, et al. 2025. <em>A <span>Survey</span> of <span>Self-Evolving Agents</span>: <span>What</span>, <span>When</span>, <span>How</span>, and <span>Where</span> to <span>Evolve</span> on the <span>Path</span> to <span>Artificial Super Intelligence</span></em>. arXiv:2507.21046. arXiv. <a href="https://arxiv.org/abs/2507.21046">https://arxiv.org/abs/2507.21046</a>.
 </div>
-<div id="ref-deepseek-aiDeepSeekR1IncentivizingReasoning2025" class="csl-entry" role="listitem">
-DeepSeek-AI, Daya Guo, Dejian Yang, et al. 2025. <span>“<span>DeepSeek-R1</span>: <span>Incentivizing Reasoning Capability</span> in <span>LLMs</span> via <span>Reinforcement Learning</span>.”</span> <em>Nature</em> 645 (8081): 633–38. <a href="https://arxiv.org/abs/2501.12948">https://arxiv.org/abs/2501.12948</a>.
+<div id="ref-guoQuestionAnsweringTask2026" class="csl-entry" role="listitem">
+Guo, Jianyuan, Zhiwei Hao, Chengcheng Wang, et al. 2026. <em>From <span>Question Answering</span> to <span>Task Completion</span>: <span>A Survey</span> on <span>Agent System</span> and <span>Harness Design</span></em>. arXiv:2606.20683. arXiv. <a href="https://arxiv.org/abs/2606.20683">https://arxiv.org/abs/2606.20683</a>.
 </div>
-<div id="ref-lightmanLetsVerifyStep2023a" class="csl-entry" role="listitem">
-Lightman, Hunter, Vineet Kosaraju, Yura Burda, et al. 2023. <em>Let’s <span>Verify Step</span> by <span>Step</span></em>. arXiv:2305.20050. arXiv. <a href="https://arxiv.org/abs/2305.20050">https://arxiv.org/abs/2305.20050</a>.
+<div id="ref-schluntzBuildingEffectiveAI2024" class="csl-entry" role="listitem">
+Schluntz, Erik, and Barry Zhang. 2024. <span>“Building <span>Effective AI Agents</span>.”</span> In <em>Anthropic Engineering</em>.
 </div>
-<div id="ref-shaoDeepSeekMathPushingLimits2024" class="csl-entry" role="listitem">
-Shao, Zhihong, Peiyi Wang, Qihao Zhu, et al. 2024. <em><span>DeepSeekMath</span>: <span>Pushing</span> the <span>Limits</span> of <span>Mathematical Reasoning</span> in <span>Open Language Models</span></em>. arXiv:2402.03300. arXiv. <a href="https://arxiv.org/abs/2402.03300">https://arxiv.org/abs/2402.03300</a>.
+<div id="ref-yangSWEagentAgentComputerInterfaces2024" class="csl-entry" role="listitem">
+Yang, John, Carlos E. Jimenez, Alexander Wettig, et al. 2024. <em><span class="nocase">SWE-agent</span>: <span>Agent-Computer Interfaces Enable Automated Software Engineering</span></em>. arXiv:2405.15793. arXiv. <a href="https://arxiv.org/abs/2405.15793">https://arxiv.org/abs/2405.15793</a>.
+</div>
+<div id="ref-yaoReActSynergizingReasoning2023" class="csl-entry" role="listitem">
+Yao, Shunyu, Jeffrey Zhao, Dian Yu, et al. 2023. <em><span>ReAct</span>: <span>Synergizing Reasoning</span> and <span>Acting</span> in <span>Language Models</span></em>. arXiv:2210.03629. arXiv. <a href="https://arxiv.org/abs/2210.03629">https://arxiv.org/abs/2210.03629</a>.
 </div>
 </div></section></div></main> <!-- /main -->
 <script>
