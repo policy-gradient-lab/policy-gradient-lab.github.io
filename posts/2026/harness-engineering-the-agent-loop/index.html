@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-08-09">
+<meta name="description" content="A harness’s control layer sets how much autonomy the loop grants the model; this post traces that choice from ReAct through reflection, planning, and search to structured-graph execution.">
+
+<title>Harness Engineering Series: The Agent Loop – Policy Gradient Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-7bbb02985b6d9af939f9d85ed406d799.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
+<meta name="description" content="A harness’s control layer sets how much autonomy the loop grants the model; this post traces that choice from ReAct through reflection, planning, and search to structured-graph execution.">
+<meta property="og:title" content="Harness Engineering Series: The Agent Loop – Policy Gradient Lab">
+<meta property="og:description" content="A harness’s control layer sets how much autonomy the loop grants the model; this post traces that choice from ReAct through reflection, planning, and search to structured-graph execution.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Harness Engineering Series: The Agent Loop – Policy Gradient Lab">
+<meta name="twitter:description" content="A harness’s control layer sets how much autonomy the loop grants the model; this post traces that choice from ReAct through reflection, planning, and search to structured-graph execution.">
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/harness-engineering-the-agent-loop/">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Harness Engineering Series: The Agent Loop</h1></header>
+
+<header id="title-block-header">
+
+
+<p class="date">2026-08-09</p>
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#the-minimal-loop-observe-reason-act" id="toc-the-minimal-loop-observe-reason-act"><span class="header-section-number">1</span> The Minimal Loop: Observe, Reason, Act</a></li>
+  <li><a href="#reflection-turning-a-failed-trajectory-into-the-next-prompt" id="toc-reflection-turning-a-failed-trajectory-into-the-next-prompt"><span class="header-section-number">2</span> Reflection: Turning a Failed Trajectory Into the Next Prompt</a></li>
+  <li><a href="#planning-commit-up-front-or-revise-on-the-fly" id="toc-planning-commit-up-front-or-revise-on-the-fly"><span class="header-section-number">3</span> Planning: Commit Up Front or Revise on the Fly</a></li>
+  <li><a href="#searching-over-loops-trees-and-rollouts" id="toc-searching-over-loops-trees-and-rollouts"><span class="header-section-number">4</span> Searching Over Loops: Trees and Rollouts</a></li>
+  <li><a href="#how-much-of-the-loop-should-the-model-run" id="toc-how-much-of-the-loop-should-the-model-run"><span class="header-section-number">5</span> How Much of the Loop Should the Model Run?</a></li>
+  <li><a href="#production-lifting-control-flow-out-of-the-context" id="toc-production-lifting-control-flow-out-of-the-context"><span class="header-section-number">6</span> Production: Lifting Control Flow Out of the Context</a></li>
+  <li><a href="#putting-it-together" id="toc-putting-it-together"><span class="header-section-number">7</span> Putting It Together</a></li>
+  </ul>
+</nav>
+<p>Every agent runs a loop: the model reads the state of its environment, decides on an action, executes it, reads the result, and repeats until the task is complete or abandoned. How that loop is structured, what the agent does next, when it halts, and how it recovers from a failed step, is the control-flow layer of the harness. This layer is sometimes called loop engineering; the established terms are agent architecture and control flow.</p>
+<p>Across the methods that populate this layer, one variable separates them more than any other: how much of the decision about what to do next is left to the model at run time, and how much is fixed in code before the run begins. A single ReAct step hands the model near-total latitude to pick its next action. A statically compiled execution graph fixes the sequence in advance and lets the model fill only the leaf nodes. The methods below are ordered along that axis, from maximal delegation to its withdrawal, because the ordering is also roughly the field’s chronology and makes the design trade-offs legible.</p>
+<p>The scope is deliberately narrow. This post covers single-agent control flow: the loop, its reflective and planning extensions, search over loops, and the recent move to lift control flow out of the model’s context. It does not treat the harness’s other layers, namely tool and interface design, context management, and evaluation, each of which is a separate post in this series. Multi-agent orchestration appears only where a single-agent pattern generalizes to it.</p>
+<section id="the-minimal-loop-observe-reason-act" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="the-minimal-loop-observe-reason-act"><span class="header-section-number">1</span> The Minimal Loop: Observe, Reason, Act</h2>
+<p>The smallest useful control loop alternates three operations: the model emits a reasoning trace, emits an action, and reads back an observation from the environment, then repeats. ReAct introduced this interleaving of reasoning traces and task-specific actions in one decoding sequence <span class="citation" data-cites="yaoReActSynergizingReasoning2023">(<a href="#ref-yaoReActSynergizingReasoning2023" role="doc-biblioref">Yao, Zhao, et al. 2023</a>)</span>. Before it, the two were separate: chain-of-thought produced reasoning with no way to consult the world, and action-only agents acted with no explicit reasoning between steps.</p>
+<p>Interleaving addresses a specific failure of each. A reasoning-only trace has no external check, so a hallucinated fact is carried forward without correction; the paper reports that hallucination is a serious problem for chain-of-thought, producing a higher false-positive rate than ReAct, which it finds more factual and grounded <span class="citation" data-cites="yaoReActSynergizingReasoning2023">(<a href="#ref-yaoReActSynergizingReasoning2023" role="doc-biblioref">Yao, Zhao, et al. 2023</a>)</span>. An action-only agent has no place to record why it chose an action, so it cannot decompose a goal or track progress across steps. Interleaving lets each observation ground the next thought and each thought condition the next action.</p>
+</section>
+<section id="reflection-turning-a-failed-trajectory-into-the-next-prompt" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="reflection-turning-a-failed-trajectory-into-the-next-prompt"><span class="header-section-number">2</span> Reflection: Turning a Failed Trajectory Into the Next Prompt</h2>
+<p>The ReAct loop improves within a single trajectory but retains nothing across attempts. Reflexion adds an outer loop that does. After a trial ends, an evaluator scores the trajectory, a language model converts the trajectory and its score into a natural-language summary of what went wrong and what to change, and that summary is written to a memory buffer and added to the agent’s context on the next attempt <span class="citation" data-cites="shinnReflexionLanguageAgents2023">(<a href="#ref-shinnReflexionLanguageAgents2023" role="doc-biblioref">Shinn et al. 2023</a>)</span>. The model is never fine-tuned; the only thing that changes between attempts is the text in its context.</p>
+<p>The paper states this by redefining the policy that reinforcement learning would optimize. In place of a weight vector <span class="math inline">\theta</span>, it writes</p>
+<p><span class="math display">
+\theta = \{M_a,\ \mathit{mem}\},
+</span></p>
+<p>where <span class="math inline">M_a</span> is the fixed action-generating model and <span class="math inline">\mathit{mem}</span> is the accumulated reflection text <span class="citation" data-cites="shinnReflexionLanguageAgents2023">(<a href="#ref-shinnReflexionLanguageAgents2023" role="doc-biblioref">Shinn et al. 2023</a>)</span>. Why locate the optimization in <span class="math inline">\mathit{mem}</span> rather than in the model’s weights? A gradient update spreads a scalar reward across the parameters through credit assignment the optimizer performs opaquely. An update to <span class="math inline">\mathit{mem}</span> is an explicit, human-readable string appended to a buffer, and the feedback it carries can be far more specific than a scalar. The cost is that improvement is bounded by what the model can extract from its own context and act on, with no convergence guarantee. On this loop the paper reports absolute gains of 22% on AlfWorld decision-making, 20% on HotPotQA reasoning, and 11% on HumanEval code generation, reaching 91% pass@1 on HumanEval <span class="citation" data-cites="shinnReflexionLanguageAgents2023">(<a href="#ref-shinnReflexionLanguageAgents2023" role="doc-biblioref">Shinn et al. 2023</a>)</span>.</p>
+<p>In control-flow terms the delegation is still high but no longer uniform across time. The reflection step is a fixed piece of scaffolding, run on a fixed schedule after each trial, that shapes what the model sees on the next iteration. LangChain’s reflection-agent tutorial makes the schedule concrete as a two-node graph, a generator and a reflector, that alternate for a fixed number of rounds before returning. The loop structure is fixed in code; the content the model produces inside it is not.</p>
+</section>
+<section id="planning-commit-up-front-or-revise-on-the-fly" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="planning-commit-up-front-or-revise-on-the-fly"><span class="header-section-number">3</span> Planning: Commit Up Front or Revise on the Fly</h2>
+<p>Reflection changes the prompt between attempts but leaves the within-attempt structure to the model step by step. Planning methods instead fix some of that structure before acting, and they differ in how firmly.</p>
+<p>Plan-and-Solve prompting is the open-loop case. A single prompt instructs the model first to devise a plan that divides the task into subtasks and then to carry out the subtasks in order, all in one pass <span class="citation" data-cites="wangPlanandSolvePromptingImproving2023">(<a href="#ref-wangPlanandSolvePromptingImproving2023" role="doc-biblioref">Wang et al. 2023</a>)</span>. The plan is generated once and not revised against execution feedback. The paper’s target is a specific failure of zero-shot chain-of-thought, missing-step errors, and the extended variant PS+ adds more detailed instructions to reduce calculation errors. The control content here is a plan the model commits to at the start, which removes some step-by-step latitude but provides no mechanism to change the plan when a step fails.</p>
+<p>The closed-loop case reintroduces revision. LangChain’s plan-and-execute pattern separates a planner that produces the full task breakdown, an executor that works through each subtask, and a re-planner that is invoked when execution diverges from the plan and rewrites the remaining steps. Control alternates between a fixed structure, the current plan, and the model, which both executes steps and, through the re-planner, proposes edits to the structure. This returns to the model some of the authority that the open-loop plan withdrew, but only at the re-planning boundary rather than at every step.</p>
+<p>ADaPT calibrates the same choice to the executor’s observed capability <span class="citation" data-cites="prasadADaPTAsNeededDecomposition2023">(<a href="#ref-prasadADaPTAsNeededDecomposition2023" role="doc-biblioref">Prasad et al. 2023</a>)</span>. It attempts a task directly, and only when the executing model fails to complete a subtask does it recursively decompose that subtask into smaller ones, stopping the recursion where the model can already execute. Decomposition is spent where it is needed and withheld where it is not, so the depth of the fixed plan structure adapts to both task complexity and model ability rather than being set uniformly in advance. The paper reports success rates up to 28.3% higher on ALFWorld, 27% higher on WebShop, and 33% higher on TextCraft than the baselines it compares against <span class="citation" data-cites="prasadADaPTAsNeededDecomposition2023">(<a href="#ref-prasadADaPTAsNeededDecomposition2023" role="doc-biblioref">Prasad et al. 2023</a>)</span>.</p>
+</section>
+<section id="searching-over-loops-trees-and-rollouts" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="searching-over-loops-trees-and-rollouts"><span class="header-section-number">4</span> Searching Over Loops: Trees and Rollouts</h2>
+<p>The methods above run one trajectory at a time. A further step keeps several partial trajectories alive at once and applies an explicit search procedure to choose among them, which moves the control decision out of the model and into the search operator.</p>
+<p>Tree of Thoughts generalizes a linear reasoning chain to a tree whose nodes are intermediate steps, called thoughts, that can be expanded, evaluated, and abandoned <span class="citation" data-cites="yaoTreeThoughtsDeliberate2023">(<a href="#ref-yaoTreeThoughtsDeliberate2023" role="doc-biblioref">Yao, Yu, et al. 2023</a>)</span>. The model proposes candidate next thoughts and also scores states through a value or voting prompt; a search algorithm, breadth-first or depth-first, decides which nodes to expand and which to prune. The value of separating proposal from search shows on tasks where a single forward pass is unreliable. On Game of 24, GPT-4 with chain-of-thought prompting solves 4% of instances and standard few-shot prompting 7%, while Tree of Thoughts solves 74% <span class="citation" data-cites="yaoTreeThoughtsDeliberate2023">(<a href="#ref-yaoTreeThoughtsDeliberate2023" role="doc-biblioref">Yao, Yu, et al. 2023</a>)</span>. The gain comes from backtracking: a wrong early step can be discarded and a sibling explored, which a single linear trajectory cannot do.</p>
+<p>LATS synergizes reasoning, acting, and planning in one framework by expanding ReAct into a search over possible reasoning and acting steps with Monte Carlo Tree Search <span class="citation" data-cites="zhouLanguageAgentTree2023">(<a href="#ref-zhouLanguageAgentTree2023" role="doc-biblioref">Zhou et al. 2023</a>)</span>. Nodes are states in a ReAct-style trajectory, the model supplies both an action proposer and a value function that scores states by expected future reward, and failed rollouts generate Reflexion-style summaries that feed back into later expansions. The selection step, which decides where in the tree to expand next, uses a variant of the UCT rule:</p>
+<p><span class="math display">
+a_t \;=\; \arg\max_{a \in e(s_t)} \left[\, V(s_t) \;+\; w \sqrt{\frac{\ln N(s_t)}{N(s_{t+1})}} \,\right].
+</span></p>
+<p>The first term <span class="math inline">V(s_t)</span> is the value the model assigns to the state, so it favors branches that look good so far, the exploitation component. The second term grows when the parent has been visited many times, through <span class="math inline">\ln N(s_t)</span>, but the child few, through <span class="math inline">N(s_{t+1})</span> in the denominator, so it favors under-explored branches, the exploration component; the weight <span class="math inline">w</span> trades the two off. Why this form rather than picking the highest-valued child outright? A pure-value rule would commit to whichever branch the model’s value function scored highest early and never test the alternatives, and the value function is itself an unreliable model estimate. The logarithmic-over-count exploration term forces the search to sample less-visited branches enough to correct early misjudgments, which is the property greedy selection lacks. With this procedure LATS reports 92.7% pass@1 on HumanEval with GPT-4, and an average score of 75.9 on WebShop with GPT-3.5, the latter without any gradient updates <span class="citation" data-cites="zhouLanguageAgentTree2023">(<a href="#ref-zhouLanguageAgentTree2023" role="doc-biblioref">Zhou et al. 2023</a>)</span>.</p>
+<p>At this point on the axis the model no longer decides what to do next. It proposes and it scores; an explicit algorithm outside it decides which proposal to pursue. The gain in reliability is bought with many more model calls per solved instance, since the search expands and evaluates many nodes that the final trajectory does not use.</p>
+</section>
+<section id="how-much-of-the-loop-should-the-model-run" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="how-much-of-the-loop-should-the-model-run"><span class="header-section-number">5</span> How Much of the Loop Should the Model Run?</h2>
+<p>The methods so far each pick a point on the delegation axis. A practitioner account from Anthropic argues that the point should be chosen per task and defaulted low. It draws a line between workflows, in which language models and tools are orchestrated through predefined code paths, and agents, in which the model dynamically directs its own process and tool use <span class="citation" data-cites="schluntzBuildingEffectiveAI2024">(<a href="#ref-schluntzBuildingEffectiveAI2024" role="doc-biblioref">Schluntz and Zhang 2024</a>)</span>. The two are the low and high ends of the same axis this post has been tracing.</p>
+<p>The account catalogs five composable patterns and presents them roughly in order of increasing delegation: prompt chaining, which fixes a sequence of model calls; routing, which classifies an input and dispatches it to a specialized follow-up; parallelization, which runs independent calls concurrently and aggregates them; orchestrator-workers, in which a model decomposes a task and dispatches subtasks to worker calls; and evaluator-optimizer, in which one call generates and another critiques in a loop <span class="citation" data-cites="schluntzBuildingEffectiveAI2024">(<a href="#ref-schluntzBuildingEffectiveAI2024" role="doc-biblioref">Schluntz and Zhang 2024</a>)</span>. The first three fix the control flow in code and use the model only to fill steps; the last two hand the model a decision about what work to spawn or when to stop.</p>
+<p>The account’s stated default is to prefer the simplest structure that works, and to add the dynamic decision-making of an agent only when a fixed workflow cannot handle the task’s variability <span class="citation" data-cites="schluntzBuildingEffectiveAI2024">(<a href="#ref-schluntzBuildingEffectiveAI2024" role="doc-biblioref">Schluntz and Zhang 2024</a>)</span>. This is a design rule about where to sit on the axis, not a new mechanism: delegation to the model is a cost to be paid when needed, not a default to be assumed.</p>
+</section>
+<section id="production-lifting-control-flow-out-of-the-context" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="production-lifting-control-flow-out-of-the-context"><span class="header-section-number">6</span> Production: Lifting Control Flow Out of the Context</h2>
+<p>The single-model loop remains the most common structure in deployed systems. A scheduler-theoretic study of 70 open-source LLM agent projects finds that 60%, 42 of the 70, adopt the Agent Loop, in which one model decides the next action by reading an ever-growing context window <span class="citation" data-cites="weiAgentLoopsStructured2026">(<a href="#ref-weiAgentLoopsStructured2026" role="doc-biblioref">Wei 2026</a>)</span>. The study characterizes three structural weaknesses of that arrangement: dependencies between steps are implicit in the context rather than declared, recovery can loop without bound, and the execution history is mutable, which complicates debugging.</p>
+<p>Its proposal, the Structured Graph Harness, withdraws the control decision from the model and encodes it as an explicit static directed acyclic graph <span class="citation" data-cites="weiAgentLoopsStructured2026">(<a href="#ref-weiAgentLoopsStructured2026" role="doc-biblioref">Wei 2026</a>)</span>. Three commitments define it: an execution plan is immutable within a plan version, planning, execution, and recovery are separated into three distinct layers rather than interleaved in one loop, and recovery follows a fixed escalation protocol rather than free-form retry. The model fills the graph’s nodes; the graph, not the model, determines order, dependency, and recovery. This is the far end of the axis, where run-time delegation is reduced to node-local generation and the control flow is fixed before the run.</p>
+<p>The frameworks in general use span the axis this describes. LangGraph models an agent as a graph of steps with explicit branching and retries; the OpenAI Agents SDK and the Claude Agent SDK provide loop implementations at a higher level, the latter being the runtime behind Claude Code. Where a system sits between a bare loop and a compiled graph is the control-flow decision this post has traced.</p>
+</section>
+<section id="putting-it-together" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="putting-it-together"><span class="header-section-number">7</span> Putting It Together</h2>
+<p>The control layer of a harness is organized by a single choice: how much of the decision about what to do next is left to the model at run time. ReAct delegates that decision in full at every step. Reflexion keeps the per-step delegation but fixes an outer reflection step that rewrites the next prompt. Planning methods fix a plan before acting and differ in whether and when they revise it, with ADaPT tying the depth of that fixed structure to the model’s observed capability. Tree search removes the decision from the model entirely, letting it propose and score while an explicit operator chooses. The practitioner guidance is to treat delegation as a cost and default to the least of it that solves the task, and the structured-graph proposal takes that withdrawal to its limit by compiling the control flow into an immutable graph.</p>
+<p>The next post in the series turns to the layer this one held fixed: the tools and interface through which the model’s chosen action reaches the environment, and why the design of that interface moves task performance as much as the loop that surrounds it.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-prasadADaPTAsNeededDecomposition2023" class="csl-entry" role="listitem">
+Prasad, Archiki, Alexander Koller, Mareike Hartmann, et al. 2023. <em><span>ADaPT</span>: <span>As-Needed Decomposition</span> and <span>Planning</span> with <span>Language Models</span></em>. arXiv:2311.05772. arXiv. <a href="https://arxiv.org/abs/2311.05772">https://arxiv.org/abs/2311.05772</a>.
+</div>
+<div id="ref-schluntzBuildingEffectiveAI2024" class="csl-entry" role="listitem">
+Schluntz, Erik, and Barry Zhang. 2024. <span>“Building <span>Effective AI Agents</span>.”</span> In <em>Anthropic Engineering</em>.
+</div>
+<div id="ref-shinnReflexionLanguageAgents2023" class="csl-entry" role="listitem">
+Shinn, Noah, Federico Cassano, Edward Berman, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. <em>Reflexion: <span>Language Agents</span> with <span>Verbal Reinforcement Learning</span></em>. arXiv:2303.11366. arXiv. <a href="https://arxiv.org/abs/2303.11366">https://arxiv.org/abs/2303.11366</a>.
+</div>
+<div id="ref-wangPlanandSolvePromptingImproving2023" class="csl-entry" role="listitem">
+Wang, Lei, Wanyu Xu, Yihuai Lan, et al. 2023. <em>Plan-and-<span>Solve Prompting</span>: <span class="nocase">Improving Zero-Shot Chain-of-Thought Reasoning</span> by <span>Large Language Models</span></em>. arXiv:2305.04091. arXiv. <a href="https://arxiv.org/abs/2305.04091">https://arxiv.org/abs/2305.04091</a>.
+</div>
+<div id="ref-weiAgentLoopsStructured2026" class="csl-entry" role="listitem">
+Wei, Hu. 2026. <em>From <span>Agent Loops</span> to <span>Structured Graphs</span>: <span>A Scheduler-Theoretic Framework</span> for <span>LLM Agent Execution</span></em>. arXiv:2604.11378. arXiv. <a href="https://arxiv.org/abs/2604.11378">https://arxiv.org/abs/2604.11378</a>.
+</div>
+<div id="ref-yaoTreeThoughtsDeliberate2023" class="csl-entry" role="listitem">
+Yao, Shunyu, Dian Yu, Jeffrey Zhao, et al. 2023. <em>Tree of <span>Thoughts</span>: <span>Deliberate Problem Solving</span> with <span>Large Language Models</span></em>. arXiv:2305.10601. arXiv. <a href="https://arxiv.org/abs/2305.10601">https://arxiv.org/abs/2305.10601</a>.
+</div>
+<div id="ref-yaoReActSynergizingReasoning2023" class="csl-entry" role="listitem">
+Yao, Shunyu, Jeffrey Zhao, Dian Yu, et al. 2023. <em><span>ReAct</span>: <span>Synergizing Reasoning</span> and <span>Acting</span> in <span>Language Models</span></em>. arXiv:2210.03629. arXiv. <a href="https://arxiv.org/abs/2210.03629">https://arxiv.org/abs/2210.03629</a>.
+</div>
+<div id="ref-zhouLanguageAgentTree2023" class="csl-entry" role="listitem">
+Zhou, Andy, Kai Yan, Michal Shlapentokh-Rothman, Haohan Wang, and Yu-Xiong Wang. 2023. <em>Language <span>Agent Tree Search Unifies Reasoning Acting</span> and <span>Planning</span> in <span>Language Models</span></em>. arXiv:2310.04406. arXiv. <a href="https://arxiv.org/abs/2310.04406">https://arxiv.org/abs/2310.04406</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/policy-gradient-lab\.github\.io");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
