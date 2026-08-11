@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-08-10">
+<meta name="description" content="Under a fixed model, the commands an agent issues and the feedback it reads move performance; action and observation interface design from the ACI to MCP.">
+
+<title>Harness Engineering Series: Tools and Interfaces – Policy Gradient Lab</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="../../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../../../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../../../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../../../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../../../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../../../">
+<script src="../../../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../../../site_libs/quarto-html/popper.min.js"></script>
+<script src="../../../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../../../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../../../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../../../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../../../site_libs/bootstrap/bootstrap-7bbb02985b6d9af939f9d85ed406d799.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="google-site-verification" content="4n0jdbiyzkpwmqaiW61igXHDUsmDnw6WgPYIwKeeJ2s">
+<meta name="description" content="Under a fixed model, the commands an agent issues and the feedback it reads move performance; action and observation interface design from the ACI to MCP.">
+<meta property="og:title" content="Harness Engineering Series: Tools and Interfaces – Policy Gradient Lab">
+<meta property="og:description" content="Under a fixed model, the commands an agent issues and the feedback it reads move performance; action and observation interface design from the ACI to MCP.">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Harness Engineering Series: Tools and Interfaces – Policy Gradient Lab">
+<meta name="twitter:description" content="Under a fixed model, the commands an agent issues and the feedback it reads move performance; action and observation interface design from the ACI to MCP.">
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="../../../styles.css">
+<link rel="canonical" href="https://policy-gradient-lab.github.io/posts/2026/harness-engineering-tools-and-interfaces/">
+</head>
+
+<body class="nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="../../../index.html">
+    <span class="navbar-title">Policy Gradient Lab</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><h1 class="title display-7">Harness Engineering Series: Tools and Interfaces</h1></header>
+
+<header id="title-block-header">
+
+
+<p class="date">2026-08-10</p>
+</header>
+
+<nav id="TOC" role="doc-toc">
+    <h2 id="toc-title">Table of Contents</h2>
+   
+  <ul>
+  <li><a href="#an-agent-is-a-new-class-of-interface-user" id="toc-an-agent-is-a-new-class-of-interface-user"><span class="header-section-number">1</span> An Agent Is a New Class of Interface User</a></li>
+  <li><a href="#the-action-interface-commands-built-for-a-model" id="toc-the-action-interface-commands-built-for-a-model"><span class="header-section-number">2</span> The Action Interface: Commands Built for a Model</a></li>
+  <li><a href="#the-observation-interface-feedback-as-part-of-the-interface" id="toc-the-observation-interface-feedback-as-part-of-the-interface"><span class="header-section-number">3</span> The Observation Interface: Feedback as Part of the Interface</a></li>
+  <li><a href="#from-calling-tools-to-designing-the-tool-surface" id="toc-from-calling-tools-to-designing-the-tool-surface"><span class="header-section-number">4</span> From Calling Tools to Designing the Tool Surface</a></li>
+  <li><a href="#standardizing-the-interface-the-model-context-protocol" id="toc-standardizing-the-interface-the-model-context-protocol"><span class="header-section-number">5</span> Standardizing the Interface: The Model Context Protocol</a></li>
+  <li><a href="#measuring-whether-the-interface-works" id="toc-measuring-whether-the-interface-works"><span class="header-section-number">6</span> Measuring Whether the Interface Works</a></li>
+  </ul>
+</nav>
+<p>Holding the language model fixed and changing only the interface through which it reads and edits code moves task performance by a wide margin. On the 300-instance SWE-bench Lite split, SWE-agent with GPT-4 Turbo resolves 18.0% of issues with its full interface, 10.3% when the file editor is removed, and 15.0% when only the edit-time syntax checker is removed <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The weights are identical across these runs. What changes is the set of commands the model can issue and the format of the feedback it receives.</p>
+<p>The harness-design survey names two of the six runtime responsibilities of a harness as the action interface <span class="math inline">\mathcal{I}_{\mathrm{act}}</span>, which maps model outputs to executable operations and defines what the agent can do, and the observation interface <span class="math inline">\mathcal{I}_{\mathrm{obs}}</span>, which determines which environment signals are exposed and how they are rendered <span class="citation" data-cites="guoQuestionAnsweringTask2026">(<a href="#ref-guoQuestionAnsweringTask2026" role="doc-biblioref">Guo et al. 2026</a>)</span>. Together they fix what an agent can do and what it can see. This post treats their design: the commands and schemas an agent invokes, the way results and errors are formatted, the standardization of that surface across systems, and the benchmarks that measure whether a given interface works. It does not treat the control loop that decides which action to take, or context management beyond the interface, except where the interface determines them.</p>
+<section id="an-agent-is-a-new-class-of-interface-user" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="an-agent-is-a-new-class-of-interface-user"><span class="header-section-number">1</span> An Agent Is a New Class of Interface User</h2>
+<p>SWE-agent introduces the agent-computer interface (ACI), an abstraction layer between the model and the computer that fixes both the commands available to the model and how the environment state is communicated back to it <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The paper argues that language-model agents are a new category of end user, distinct from the two users existing interfaces were built for: application programming interfaces target other software, and graphical user interfaces target humans. A shell configured for a human, or an API designed for a program, is not the interface that serves a language model best.</p>
+<p>The argument rests on concrete differences in ability. The paper notes that current models lack the visual understanding to operate graphical applications directly, so features such as syntax checking and navigation must be surfaced as text if the agent is to use them <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. It also notes that a human can flexibly ignore irrelevant content, whereas for a model all content carries a fixed cost in the context window and distracting content degrades performance. An interface built for a human therefore mismatches the agent on exactly the dimensions that determine agent success.</p>
+<p>Working from a fixed model and tuning the interface on a development set, by manual inspection of agent behavior and a grid search over configurations, the paper states four design principles <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. Actions should be simple, with few options and concise documentation, so the agent can use them without demonstrations or fine-tuning. Actions should be compact and efficient, consolidating a high-level operation into a single command rather than requiring several to compose. Environment feedback should be informative but concise, reporting the effect of an action without extraneous detail. And guardrails, such as a syntax checker that rejects a malformed edit, should catch errors early to prevent them from propagating. The remaining sections read the empirical results through these four principles.</p>
+</section>
+<section id="the-action-interface-commands-built-for-a-model" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="the-action-interface-commands-built-for-a-model"><span class="header-section-number">2</span> The Action Interface: Commands Built for a Model</h2>
+<p>SWE-agent replaces the general shell with a small set of purpose-built commands for the software-engineering task: <code>find_file</code>, <code>search_file</code>, and <code>search_dir</code> for navigation, <code>open</code> with <code>scroll_up</code>, <code>scroll_down</code>, and <code>goto</code> for viewing, and an <code>edit</code> command for modification <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. Each command embodies the design principles. The search commands return at most 50 results and, when a query exceeds that, report nothing and ask the agent to refine the query, which enforces concise feedback rather than flooding the context with matches. The <code>edit</code> command takes a start line, an end line, and replacement text, and applies a multi-line edit in a single step, which consolidates an operation that the raw shell would spread across several fragile <code>sed</code> or redirection commands.</p>
+<p>The interface ablations isolate the contribution of each of these choices under a fixed model, SWE-agent with GPT-4 Turbo on SWE-bench Lite. The full configuration resolves 18.0% of instances; each row below replaces one component with an alternative and holds everything else constant <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Variant</th>
+<th>% Resolved</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Editor</td>
+<td><code>edit</code> with linting (full)</td>
+<td>18.0</td>
+</tr>
+<tr class="even">
+<td>Editor</td>
+<td><code>edit</code> without linting</td>
+<td>15.0</td>
+</tr>
+<tr class="odd">
+<td>Editor</td>
+<td>no <code>edit</code> command</td>
+<td>10.3</td>
+</tr>
+<tr class="even">
+<td>Search</td>
+<td>summarized (full)</td>
+<td>18.0</td>
+</tr>
+<tr class="odd">
+<td>Search</td>
+<td>iterative</td>
+<td>12.0</td>
+</tr>
+<tr class="even">
+<td>Search</td>
+<td>no search</td>
+<td>15.7</td>
+</tr>
+<tr class="odd">
+<td>File viewer</td>
+<td>100-line window (full)</td>
+<td>18.0</td>
+</tr>
+<tr class="even">
+<td>File viewer</td>
+<td>30-line window</td>
+<td>14.3</td>
+</tr>
+<tr class="odd">
+<td>File viewer</td>
+<td>whole file</td>
+<td>12.7</td>
+</tr>
+</tbody>
+</table>
+<p>Removing the <code>edit</code> command and leaving the agent to modify files through shell redirection and <code>sed</code> is the single largest regression, from 18.0% to 10.3% <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The paper attributes this to the absence of consolidated, feedback-bearing edits: redirection rewrites whole files for a small change, <code>sed</code> makes multi-line edits cumbersome, and neither reports what changed, so the model operates without immediate confirmation.</p>
+<p>One row inverts the naive expectation that a more capable-looking tool helps. The iterative search interface, modeled directly on the human editor experience of stepping through matches with <code>next</code> and <code>prev</code>, resolves 12.0%, below the 15.7% of providing no search tool at all <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. The paper reports that, given many matches, agents step through every result exhaustively, exhausting the cost budget or context window. The summarized interface, which lists results at once and refuses over-broad queries, avoids this and reaches 18.0%. The failure is not of the model but of an interface transplanted from human use, which is the ACI premise stated as a measured result.</p>
+<p>The same principle of consolidation and clear naming appears in practitioner guidance on tool design, framed for the general case of an agent calling arbitrary tools rather than editing code. The engineering account of writing tools for agents recommends consolidating functionality, replacing a set of narrow tools such as <code>list_users</code>, <code>list_events</code>, and <code>create_event</code> with a single higher-level <code>schedule_event</code>, and namespacing tools by service and resource, for example <code>asana_search</code> and <code>jira_search</code>, so the agent can select the right one <span class="citation" data-cites="aizawaWritingEffectiveTools2025">(<a href="#ref-aizawaWritingEffectiveTools2025" role="doc-biblioref">Aizawa 2025</a>)</span>. It reports that even small refinements to tool descriptions can improve outcomes, and that Claude Sonnet 3.5 reached state-of-the-art performance on SWE-bench Verified after such refinements. This is a report from deployment rather than a controlled ablation, and it is stated as such here, but it names the same lever the SWE-agent ablations quantify: the specification of the action, not the capability of the model.</p>
+<p>At the level of general APIs rather than shell commands, ToolLLM shows one concrete encoding of the action interface <span class="citation" data-cites="qinToolLLMFacilitatingLarge2023">(<a href="#ref-qinToolLLMFacilitatingLarge2023" role="doc-biblioref">Qin et al. 2023</a>)</span>. Each API is presented to the model as a callable function, with its documentation placed in the model’s function field, and two terminal functions are added to the action space, “Finish with Final Answer” and “Finish by Giving Up”, the latter letting the agent abandon a task whose tools cannot solve it. At each step the model emits a thought, an API name, and its parameters, and receives the real API response. The action interface here is the function schema and the two control actions, defined so that both success and principled failure are expressible.</p>
+</section>
+<section id="the-observation-interface-feedback-as-part-of-the-interface" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="the-observation-interface-feedback-as-part-of-the-interface"><span class="header-section-number">3</span> The Observation Interface: Feedback as Part of the Interface</h2>
+<p>The feedback an interface returns is a design object with the same weight as the commands it accepts. SWE-agent integrates the file viewer with the editor so that after an <code>edit</code> the viewer automatically redisplays the updated lines, letting the agent observe the effect of its change without issuing a further command <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. When a command produces no output, the interface substitutes an explicit message that the command ran successfully and produced none, rather than returning an empty observation the model must interpret.</p>
+<p>The file-viewer ablation shows that the observation interface has an interior optimum rather than a monotone preference for more information. Both a 30-line window (14.3%) and displaying the whole file (12.7%) resolve fewer instances than the 100-line window (18.0%) <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. Too little context forces repeated scrolling; too much fills the context window with lines that do not bear on the edit. The informative-but-concise principle is a balance point, not a direction.</p>
+<p>The clearest case for feedback as a guardrail is the edit-time syntax checker. SWE-agent integrates a linter into the <code>edit</code> command: an edit is applied only if it does not introduce major errors, and an invalid edit is discarded with a message asking the agent to try again <span class="citation" data-cites="yangSWEagentAgentComputerInterfaces2024">(<a href="#ref-yangSWEagentAgentComputerInterfaces2024" role="doc-biblioref">Yang et al. 2024</a>)</span>. Removing only the linter, and keeping the consolidated <code>edit</code> command, drops performance from 18.0% to 15.0%. The trajectory analysis explains why the effect is this large. Out of 2294 instances, 1185 (51.7%) of the GPT-4 Turbo trajectories contain at least one failed edit, and although any edit attempt eventually succeeds with probability 90.5%, that probability falls to 57.2% after a single failed edit. Errors compound, and feedback that catches a malformed edit at the moment it is made interrupts the compounding.</p>
+<p>Practitioner guidance quantifies the token cost that the fixed-cost observation raises. The account of writing tools for agents reports that Claude Code restricts tool responses to 25,000 tokens by default and recommends pagination, range selection, filtering, and truncation with sensible defaults when a response would exceed that <span class="citation" data-cites="aizawaWritingEffectiveTools2025">(<a href="#ref-aizawaWritingEffectiveTools2025" role="doc-biblioref">Aizawa 2025</a>)</span>. It also proposes letting the agent choose response verbosity through a format parameter, reporting an example in which a concise response used roughly one third the tokens of the detailed one, 72 against 206, while preserving the information the agent needed. These are production defaults rather than benchmarked results, but they operationalize the same observation SWE-agent makes: because every returned token has a fixed cost for the model, the volume and format of feedback are part of the interface, not an afterthought.</p>
+</section>
+<section id="from-calling-tools-to-designing-the-tool-surface" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="from-calling-tools-to-designing-the-tool-surface"><span class="header-section-number">4</span> From Calling Tools to Designing the Tool Surface</h2>
+<p>Two questions run through the tool-use literature and are easy to conflate. One is whether a model can call a tool at all: whether it emits a syntactically valid call at the right moment. The other is how the tool surface is presented: what documentation, schema, and feedback the model reads when it does. The interface question is the second, and the lineage from Toolformer to Gorilla to ToolLLM moves the emphasis from the first to the second.</p>
+<p>Toolformer addresses whether and when to call a tool, and solves it without supervision of where a tool would help <span class="citation" data-cites="schickToolformerLanguageModels2023">(<a href="#ref-schickToolformerLanguageModels2023" role="doc-biblioref">Schick et al. 2023</a>)</span>. The model samples candidate API calls at positions in ordinary text, executes them, and keeps a call only if its result lowers the model’s loss on the tokens that follow. For a candidate call <span class="math inline">c_i</span> with result <span class="math inline">r_i</span> at position <span class="math inline">i</span>, writing <span class="math inline">\mathbf{e}(c_i, r_i)</span> for the call-and-result rendered as a prefix and <span class="math inline">\varepsilon</span> for the empty prefix, the paper defines</p>
+<p><span class="math display">
+L_i^{+} = L_i\big(\mathbf{e}(c_i, r_i)\big), \qquad
+L_i^{-} = \min\big(L_i(\varepsilon),\, L_i(\mathbf{e}(c_i, \varepsilon))\big),
+</span></p>
+<p>and retains the call when <span class="math inline">L_i^{-} - L_i^{+} \ge \tau_f</span> for a threshold <span class="math inline">\tau_f</span>. Why this form? There is no labeled corpus of where a tool is useful, so the model’s own next-token loss stands in as the utility signal, and a call is kept only when seeing its result makes the continuation more predictable. The minimum in <span class="math inline">L_i^{-}</span> is what makes the test demand that the result carry the benefit: the comparison baseline is the better of making no call and making the call but discarding its result, so a call that helps only by cueing the model’s phrasing, without its returned value mattering, does not pass. Trained this way, a 6.7B-parameter GPT-J model using a calculator, a question-answering system, a Wikipedia search, a translation system, and a calendar outperforms the far larger GPT-3 175B on the mathematical and factual benchmarks where the tool supplies the missing computation or fact <span class="citation" data-cites="schickToolformerLanguageModels2023">(<a href="#ref-schickToolformerLanguageModels2023" role="doc-biblioref">Schick et al. 2023</a>)</span>.</p>
+<p>Toolformer’s stated limitations mark exactly where the interface question begins. The paper notes that its API calls are generated independently, so the model cannot chain tools by feeding one tool’s output into another, and cannot use a tool interactively, for example by browsing search results and refining a query <span class="citation" data-cites="schickToolformerLanguageModels2023">(<a href="#ref-schickToolformerLanguageModels2023" role="doc-biblioref">Schick et al. 2023</a>)</span>. These are properties of the interface and the loop, not of whether the model can emit a call.</p>
+<p>Gorilla moves the emphasis to how API documentation enters the interface and makes the failure mode of a misused interface a measured quantity <span class="citation" data-cites="patilGorillaLargeLanguage2023">(<a href="#ref-patilGorillaLargeLanguage2023" role="doc-biblioref">Patil et al. 2023</a>)</span>. It defines a hallucination precisely, as an API call that is not a subtree of any API in the reference database, that is, an invented tool, and separates it from an error, a real API invoked incorrectly, scoring both by abstract-syntax-tree subtree matching against APIBench, a dataset of 1645 model-hub APIs drawn from TorchHub, TensorHub, and HuggingFace. Its interface mechanism is retrieval-aware training: the relevant API document is concatenated into the prompt behind a fixed instruction to use it for reference, both during training and at inference, so the model learns to read current documentation and can adapt when a document changes at test time. The paper reports that the fine-tuned LLaMA-7B model, evaluated zero-shot, writes API calls more accurately than GPT-4 while sharply reducing hallucinated calls <span class="citation" data-cites="patilGorillaLargeLanguage2023">(<a href="#ref-patilGorillaLargeLanguage2023" role="doc-biblioref">Patil et al. 2023</a>)</span>. It also reports that retrieval does not always help: a weak retriever supplying the wrong document can lower accuracy below the no-retrieval setting, so the benefit is contingent on retrieval quality rather than automatic.</p>
+<p>ToolLLM addresses the scale at which the tool surface no longer fits in a prompt <span class="citation" data-cites="qinToolLLMFacilitatingLarge2023">(<a href="#ref-qinToolLLMFacilitatingLarge2023" role="doc-biblioref">Qin et al. 2023</a>)</span>. Its ToolBench dataset covers 16,464 real REST APIs, bundled into 3,451 tools across 49 categories from RapidAPI Hub. At that scale the action interface cannot be a fixed list of tools, so the system trains a neural API retriever that selects a small relevant subset for each instruction, and the model plans over that subset. Retrieving the tools is itself an interface decision: the paper reports that feeding the model a retrieved subset can outperform giving it a hand-picked set, because the retriever surfaces relevant substitute APIs the annotator did not choose. The progression across the three papers is from establishing that a model can call tools, to presenting documentation and controlling hallucination, to selecting and scaling the tool surface, and only the first is a question about the model in isolation.</p>
+</section>
+<section id="standardizing-the-interface-the-model-context-protocol" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="standardizing-the-interface-the-model-context-protocol"><span class="header-section-number">5</span> Standardizing the Interface: The Model Context Protocol</h2>
+<p>The interfaces above are each defined per system. The Model Context Protocol (MCP) is an open protocol that standardizes how an application supplies tools and context to a language model, using JSON-RPC 2.0 messages and capability negotiation between a host, its clients, and servers, with the message types defined by a published schema <span class="citation" data-cites="modelcontextprotocolModelContextProtocol2025">(<a href="#ref-modelcontextprotocolModelContextProtocol2025" role="doc-biblioref">Model Context Protocol 2025</a>)</span>. Its relevance here is the distinction it draws among three server-provided primitives. A server exposes tools, which are functions for the model to execute; resources, which are context and data for the user or the model to read; and prompts, which are templated messages and workflows for the user.</p>
+<p>The reason to separate the three is that they differ in who controls invocation and in the risk they carry. The specification frames tools as model-invoked actions, while resources and prompts are supplied under application and user control, and it treats a tool as arbitrary code execution: it states that a host must obtain explicit user consent before invoking any tool, and that tool descriptions must be considered untrusted unless they come from a trusted server <span class="citation" data-cites="modelcontextprotocolModelContextProtocol2025">(<a href="#ref-modelcontextprotocolModelContextProtocol2025" role="doc-biblioref">Model Context Protocol 2025</a>)</span>. Read against the action-and-observation decomposition, MCP standardizes the boundary the earlier systems each drew by hand, and it draws the same line the SWE-agent design draws between what the agent may do and what it may read, now as a protocol-level distinction with consent attached to the acting side.</p>
+</section>
+<section id="measuring-whether-the-interface-works" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="measuring-whether-the-interface-works"><span class="header-section-number">6</span> Measuring Whether the Interface Works</h2>
+<p>An interface claim is only as good as the evaluation that isolates it, and the benchmarks for tool use measure progressively harder properties. The Berkeley Function-Calling Leaderboard evaluates single-turn function-calling: whether a model, given a set of function schemas and a request, emits the correct call on real-world APIs <span class="citation" data-cites="ucberkeleygorillateamBerkeleyFunctionCallingLeaderboard2024">(<a href="#ref-ucberkeleygorillateamBerkeleyFunctionCallingLeaderboard2024" role="doc-biblioref">UC Berkeley Gorilla Team 2024</a>)</span>. It measures the narrow interface question of call correctness in isolation from multi-turn interaction.</p>
+<p><span class="math inline">\tau</span>-bench raises the bar to a multi-turn setting in which the agent interacts both with domain API tools and with a language-model-simulated user, under written policy guidelines, across a retail domain of 115 tasks and an airline domain of 50 tasks <span class="citation" data-cites="yaoTaubenchBenchmarkToolAgentUser2024">(<a href="#ref-yaoTaubenchBenchmarkToolAgentUser2024" role="doc-biblioref">Yao et al. 2024</a>)</span>. Its evaluation avoids human judgment by comparing the database state at the end of the conversation against a unique annotated goal state. The reward of an episode is a product,</p>
+<p><span class="math display">
+r = r_{\mathrm{action}} \cdot r_{\mathrm{output}} \in \{0, 1\},
+</span></p>
+<p>where <span class="math inline">r_{\mathrm{action}}</span> is one only if the final database matches the ground-truth outcome and <span class="math inline">r_{\mathrm{output}}</span> is one only if the agent’s replies conveyed the required information to the user. The product form encodes that a task is complete only when both hold: an agent that reaches the correct world state but never tells the user the needed fact, or that says the right thing while leaving the database wrong, scores zero. To measure reliability rather than best-case success, the paper defines, for a task run <span class="math inline">n</span> times with <span class="math inline">c</span> successes,</p>
+<p><span class="math display">
+\mathrm{pass}^{k} = \mathbb{E}_{\mathrm{task}}\!\left[\frac{\binom{c}{k}}{\binom{n}{k}}\right],
+</span></p>
+<p>the probability that all <span class="math inline">k</span> independent trials of a task succeed. This inverts the emphasis of <span class="math inline">\mathrm{pass}@k</span>, which is one minus the probability that all <span class="math inline">k</span> trials fail and so rewards discovering a solution in at least one of several attempts. The paper’s stated motivation is that a deployed agent must handle semantically equivalent conversations consistently, so the relevant quantity is the chance every trial succeeds, not the chance one does <span class="citation" data-cites="yaoTaubenchBenchmarkToolAgentUser2024">(<a href="#ref-yaoTaubenchBenchmarkToolAgentUser2024" role="doc-biblioref">Yao et al. 2024</a>)</span>. Measured this way, the best function-calling agent tested, gpt-4o, reaches a <span class="math inline">\mathrm{pass}^1</span> of 48.2% on average, 61.2% in retail and 35.2% in airline, and its reliability falls to below 25% at <span class="math inline">\mathrm{pass}^8</span> in retail. The paper attributes the gap to insufficient consistency and rule-following. An ablation that removes the policy document from the prompt supports this: it barely changes retail performance but sharply lowers airline performance, indicating that in the easier domain the agent was often not leveraging the policy at all.</p>
+<p><span class="math inline">\tau^2</span>-bench extends the evaluation to a property the earlier benchmarks cannot express: coordination with another actor who also holds tools <span class="citation" data-cites="barresTau2BenchEvaluatingConversational2025">(<a href="#ref-barresTau2BenchEvaluatingConversational2025" role="doc-biblioref">Barres et al. 2025</a>)</span>. Where <span class="math inline">\tau</span>-bench is single-control, meaning only the agent acts on the world and the simulated user only supplies information, <span class="math inline">\tau^2</span>-bench introduces a dual-control Telecom domain in which the simulated user also has tools to observe and change a shared environment. It models the setting as a decentralized partially observable Markov decision process, with the agent and the user as two decision-makers over separate observations of one state, and generates 114 sampled tasks from a combinatorial space of 2285 built by composing atomic subtasks. The headline result isolates the cost of coordination: moving from a solo setting, in which one agent controls all tools including the user’s, to the dual-control setting drops <span class="math inline">\mathrm{pass}^1</span> by 18% for GPT-4.1 and 25% for o4-mini, with GPT-4.1 reaching 34% and Claude 3.7 Sonnet 49% on the Telecom tasks. Because the solo setting removes only the need to guide another actor while holding the reasoning and tool-calling load fixed, the gap between the two attributes failure specifically to communication and decentralized control rather than to reasoning. This is the verification responsibility of the harness applied to the interface, and it shows the measured object moving from call correctness, to multi-turn reliability, to coordination through the interface with a second party.</p>
+<p>The evidence across these sources supports a single reading. Under a fixed model, the interface through which an agent acts and observes is a distinct performance lever, and the SWE-agent ablations quantify it directly: the file editor is worth 7.7 points on SWE-bench Lite, the edit-time linter 3.0, and an interface borrowed from human use can underperform no tool at all. The four design principles, simple actions, compact actions, informative-but-concise feedback, and guardrails, recur from the shell commands of SWE-agent to the general tool-design guidance and the function schemas of ToolLLM. The tool-use lineage separates the model’s capacity to call a tool from the design of the tool surface, MCP standardizes the boundary between acting and reading that the individual systems each drew by hand, and the <span class="math inline">\tau</span>-bench family measures whether a given interface yields not just occasional success but reliable, policy-compliant, and coordinated behavior.</p>
+<p>The next post in the series turns from the interface to what passes through it over a long run: the context manager and the state store, which select and compress what enters each model call and persist progress beyond the active context window.</p>
+
+
+
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-aizawaWritingEffectiveTools2025" class="csl-entry" role="listitem">
+Aizawa, Ken. 2025. <span>“Writing Effective Tools for <span>AI</span> Agents — with Agents.”</span> In <em>Anthropic Engineering</em>.
+</div>
+<div id="ref-barresTau2BenchEvaluatingConversational2025" class="csl-entry" role="listitem">
+Barres, Victor, Honghua Dong, Soham Ray, Xujie Si, and Karthik Narasimhan. 2025. <em>Tau2-<span>Bench</span>: <span>Evaluating Conversational Agents</span> in a <span>Dual-Control Environment</span></em>. arXiv:2506.07982. arXiv. <a href="https://arxiv.org/abs/2506.07982">https://arxiv.org/abs/2506.07982</a>.
+</div>
+<div id="ref-guoQuestionAnsweringTask2026" class="csl-entry" role="listitem">
+Guo, Jianyuan, Zhiwei Hao, Chengcheng Wang, et al. 2026. <em>From <span>Question Answering</span> to <span>Task Completion</span>: <span>A Survey</span> on <span>Agent System</span> and <span>Harness Design</span></em>. arXiv:2606.20683. arXiv. <a href="https://arxiv.org/abs/2606.20683">https://arxiv.org/abs/2606.20683</a>.
+</div>
+<div id="ref-modelcontextprotocolModelContextProtocol2025" class="csl-entry" role="listitem">
+Model Context Protocol. 2025. <span>“Model <span>Context Protocol Specification</span> (<span>Version</span> 2025-06-18).”</span> In <em>Model Context Protocol</em>. Https://modelcontextprotocol.io/specification/2025-06-18.
+</div>
+<div id="ref-patilGorillaLargeLanguage2023" class="csl-entry" role="listitem">
+Patil, Shishir G., Tianjun Zhang, Xin Wang, and Joseph E. Gonzalez. 2023. <em>Gorilla: <span>Large Language Model Connected</span> with <span>Massive APIs</span></em>. arXiv:2305.15334. arXiv. <a href="https://arxiv.org/abs/2305.15334">https://arxiv.org/abs/2305.15334</a>.
+</div>
+<div id="ref-qinToolLLMFacilitatingLarge2023" class="csl-entry" role="listitem">
+Qin, Yujia, Shihao Liang, Yining Ye, et al. 2023. <em><span>ToolLLM</span>: <span>Facilitating Large Language Models</span> to <span>Master</span> 16000+ <span class="nocase">Real-world APIs</span></em>. arXiv:2307.16789. arXiv. <a href="https://arxiv.org/abs/2307.16789">https://arxiv.org/abs/2307.16789</a>.
+</div>
+<div id="ref-schickToolformerLanguageModels2023" class="csl-entry" role="listitem">
+Schick, Timo, Jane Dwivedi-Yu, Roberto Dessì, et al. 2023. <em>Toolformer: <span>Language Models Can Teach Themselves</span> to <span>Use Tools</span></em>. arXiv:2302.04761. arXiv. <a href="https://arxiv.org/abs/2302.04761">https://arxiv.org/abs/2302.04761</a>.
+</div>
+<div id="ref-ucberkeleygorillateamBerkeleyFunctionCallingLeaderboard2024" class="csl-entry" role="listitem">
+UC Berkeley Gorilla Team. 2024. <span>“Berkeley <span>Function-Calling Leaderboard</span> (<span>BFCL</span>).”</span> In <em>Gorilla</em>. Https://gorilla.cs.berkeley.edu/leaderboard.html.
+</div>
+<div id="ref-yangSWEagentAgentComputerInterfaces2024" class="csl-entry" role="listitem">
+Yang, John, Carlos E. Jimenez, Alexander Wettig, et al. 2024. <em><span class="nocase">SWE-agent</span>: <span>Agent-Computer Interfaces Enable Automated Software Engineering</span></em>. arXiv:2405.15793. arXiv. <a href="https://arxiv.org/abs/2405.15793">https://arxiv.org/abs/2405.15793</a>.
+</div>
+<div id="ref-yaoTaubenchBenchmarkToolAgentUser2024" class="csl-entry" role="listitem">
+Yao, Shunyu, Noah Shinn, Pedram Razavi, and Karthik Narasimhan. 2024. <em>Tau-Bench: <span>A Benchmark</span> for <span>Tool-Agent-User Interaction</span> in <span>Real-World Domains</span></em>. arXiv:2406.12045. arXiv. <a href="https://arxiv.org/abs/2406.12045">https://arxiv.org/abs/2406.12045</a>.
+</div>
+</div></section></div></main> <!-- /main -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const toc = document.querySelector("#TOC");
+    if (toc) {
+      const title = toc.querySelector("#toc-title");
+      const list = toc.querySelector("ul");
+      
+      if (title && list) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        
+        // Retain original title text and ID for CSS targeting
+        summary.innerHTML = title.innerHTML;
+        summary.id = "toc-title"; 
+        
+        // Optional: Set to true if you want the TOC expanded by default
+        details.open = true; 
+        
+        // Reconstruct the DOM structure
+        details.appendChild(summary);
+        details.appendChild(list);
+        toc.replaceChild(details, title);
+      }
+    }
+  });
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/policy-gradient-lab\.github\.io");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+      <ul class="footer-items list-unstyled">
+    <li class="nav-item">
+ © 2026 Policy Gradient Lab. All Rights Reserved.
+  </li>  
+</ul>
+    </div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
